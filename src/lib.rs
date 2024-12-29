@@ -1,6 +1,7 @@
 use std::error::Error;
 
-use axum::{Router, routing::get};
+use askama_axum::Template;
+use axum::{routing::get, Router};
 
 pub struct AppConfig {
     addr: String,
@@ -8,18 +9,14 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self, Box<dyn Error>> {
-        let addr = std::env::var("ADDRESS")
-            .unwrap_or("0.0.0.0:3000".to_string());
+        let addr = std::env::var("ADDRESS").unwrap_or("0.0.0.0:3000".to_string());
 
-        Ok(Self {
-            addr,
-        })
+        Ok(Self { addr })
     }
 }
 
 pub async fn start_server(config: AppConfig) -> Result<(), Box<dyn Error>> {
-    let app = Router::new()
-        .route("/", get(get_index));
+    let app = Router::new().route("/", get(get_index));
 
     println!("Running server on {}", config.addr);
 
@@ -29,6 +26,10 @@ pub async fn start_server(config: AppConfig) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn get_index() -> &'static str {
-    "Grimoire"
+async fn get_index() -> IndexTemplate {
+    IndexTemplate {}
 }
+
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate;

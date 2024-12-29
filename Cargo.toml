@@ -7,3 +7,5 @@ edition = "2021"
 axum = "0.7.9"
 tokio = { version = "1.42.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.5.2"
+askama = "0.12.1"
+askama_axum = "0.4.0"
