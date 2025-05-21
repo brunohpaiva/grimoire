@@ -1,6 +1,7 @@
 use std::error::Error;
 
-use askama_axum::Template;
+use askama::Template;
+use askama_web::WebTemplate;
 use axum::{routing::get, Router};
 
 pub struct AppConfig {
@@ -30,6 +31,6 @@ async fn get_index() -> IndexTemplate {
     IndexTemplate {}
 }
 
-#[derive(Template)]
+#[derive(Template, WebTemplate)]
 #[template(path = "index.html")]
 struct IndexTemplate;

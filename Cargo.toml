@@ -1,11 +1,11 @@
 [package]
 name = "grimoire"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-axum = "0.7.9"
-tokio = { version = "1.42.0", features = ["macros", "rt-multi-thread"] }
+axum = "0.8.4"
+tokio = { version = "1.45.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.5.2"
-askama = "0.12.1"
-askama_axum = "0.4.0"
+askama = "0.14.0"
+askama_web = { version = "0.14.2", features = ["axum-0.8"] }
