@@ -1,9 +1,10 @@
 use std::process;
 
-use grimoire::{start_server, AppConfig};
+use anyhow::Result;
+use grimoire::{config::AppConfig, start_server};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let config = AppConfig::from_env().unwrap_or_else(|err| {
         eprintln!("Couldn't parse config: {err}");
         process::exit(1);

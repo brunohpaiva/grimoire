@@ -1,23 +1,24 @@
-use std::error::Error;
+use std::sync::Arc;
 
+use anyhow::Result;
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
+use config::AppConfig;
+use deadpool_postgres::{Config, Pool, Runtime, tokio_postgres::NoTls};
 
-pub struct AppConfig {
-    addr: String,
+pub mod config;
+
+struct AppState {
+    pub pool: Pool,
 }
 
-impl AppConfig {
-    pub fn from_env() -> Result<Self, Box<dyn Error>> {
-        let addr = std::env::var("ADDRESS").unwrap_or("0.0.0.0:3000".to_string());
+pub async fn start_server(config: AppConfig) -> Result<()> {
+    let pool = create_db_pool(&config)?;
 
-        Ok(Self { addr })
-    }
-}
+    let state = Arc::new(AppState { pool });
 
-pub async fn start_server(config: AppConfig) -> Result<(), Box<dyn Error>> {
-    let app = Router::new().route("/", get(get_index));
+    let app = Router::new().route("/", get(get_index)).with_state(state);
 
     println!("Running server on {}", config.addr);
 
@@ -34,3 +35,14 @@ async fn get_index() -> IndexTemplate {
 #[derive(Template, WebTemplate)]
 #[template(path = "index.html")]
 struct IndexTemplate;
+
+fn create_db_pool(config: &AppConfig) -> Result<Pool> {
+    let mut cfg = Config::new();
+    cfg.host = Some(config.db_host.clone());
+    cfg.port = Some(config.db_port.clone());
+    cfg.dbname = Some(config.db_name.clone());
+    cfg.user = Some(config.db_user.clone());
+    cfg.password = Some(config.db_password.clone());
+
+    Ok(cfg.create_pool(Some(Runtime::Tokio1), NoTls)?)
+}

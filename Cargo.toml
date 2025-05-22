@@ -9,3 +9,5 @@ tokio = { version = "1.45.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.5.2"
 askama = "0.14.0"
 askama_web = { version = "0.14.2", features = ["axum-0.8"] }
+deadpool-postgres = "0.14.1"
+anyhow = "1.0.98"
