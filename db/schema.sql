@@ -42,8 +42,10 @@ CREATE TABLE season (
     id INT NOT NULL PRIMARY KEY,
     kind media_kind NOT NULL GENERATED ALWAYS AS ('SEASON'::media_kind) STORED,
     title TEXT NOT NULL,
+    number INT NOT NULL,
     FOREIGN KEY (show_id) REFERENCES show (id),
-    FOREIGN KEY (id, kind) REFERENCES media (id, kind)
+    FOREIGN KEY (id, kind) REFERENCES media (id, kind),
+    UNIQUE (show_id, number)
 );
 
 CREATE TABLE episode (
@@ -52,9 +54,11 @@ CREATE TABLE episode (
     id INT NOT NULL PRIMARY KEY,
     kind media_kind NOT NULL GENERATED ALWAYS AS ('EPISODE'::media_kind) STORED,
     title TEXT NOT NULL,
+    number INT NOT NULL,
     FOREIGN KEY (show_id) REFERENCES show (id),
     FOREIGN KEY (season_id) REFERENCES season (id),
-    FOREIGN KEY (id, kind) REFERENCES media (id, kind)
+    FOREIGN KEY (id, kind) REFERENCES media (id, kind),
+    UNIQUE (show_id, season_id, number)
 );
 
 CREATE TABLE watch_history (
