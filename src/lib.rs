@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use askama::Template;
-use askama_web::WebTemplate;
-use axum::{Router, routing::get};
+use axum::Router;
 use config::AppConfig;
 use deadpool_postgres::{Config, Pool, Runtime, tokio_postgres::NoTls};
 
 pub mod config;
-pub mod db;
+mod db;
+mod routes;
 pub mod trakt;
 
 struct AppState {
@@ -20,7 +19,9 @@ pub async fn start_server(config: AppConfig) -> Result<()> {
 
     let state = Arc::new(AppState { pool });
 
-    let app = Router::new().route("/", get(get_index)).with_state(state);
+    let app = Router::new()
+        .merge(routes::main::build_router())
+        .with_state(state);
 
     println!("Running server on {}", config.addr);
 
@@ -29,14 +30,6 @@ pub async fn start_server(config: AppConfig) -> Result<()> {
 
     Ok(())
 }
-
-async fn get_index() -> IndexTemplate {
-    IndexTemplate {}
-}
-
-#[derive(Template, WebTemplate)]
-#[template(path = "index.html")]
-struct IndexTemplate;
 
 fn create_db_pool(config: &AppConfig) -> Result<Pool> {
     let mut cfg = Config::new();

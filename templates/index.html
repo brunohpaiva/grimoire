@@ -1,11 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grimoire</title>
-</head>
-<body>
-    Index page
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Grimoire{% endblock %}
+
+{% block body %}
+<h1>Home</h1>
+
+<section id="recently-watched">
+    <h2>Recently Watched</h2>
+
+    <ol>
+        {% for entry in recently_watched %}
+            <li>
+                Title: {{ entry.title }}
+                {% if let Some(text) = entry.season_title %}
+                    Season: {{ text }}
+                {% endif %}
+                {% if let Some(text) = entry.show_title %}
+                    Show: {{ text }}
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+</section>
+
+{% endblock %}
