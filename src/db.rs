@@ -17,6 +17,15 @@ pub struct Media {
     kind: MediaKind,
 }
 
+#[derive(Debug)]
+pub struct MediaExternalId {
+    pub trakt_id: Option<i32>,
+    pub trakt_slug: Option<String>,
+    pub tvdb_id: Option<i32>,
+    pub imdb_id: Option<String>,
+    pub tmdb_id: Option<i32>,
+}
+
 #[derive(Debug, Error)]
 pub enum GetMediaIdError {
     #[error("failed to query media id")]
@@ -68,11 +77,40 @@ pub async fn insert_media<C: GenericClient>(
 }
 
 #[derive(Debug, Error)]
+#[error("failed to insert media external id")]
+pub struct InsertMediaExternalIdError(#[source] tokio_postgres::Error);
+
+pub async fn insert_media_external_id<C: GenericClient>(
+    conn: &C,
+    media: &Media,
+    external_id: &MediaExternalId,
+) -> Result<(), InsertMediaExternalIdError> {
+    conn.execute(
+        "INSERT INTO media_external_id (media_id, trakt_id, trakt_slug, tvdb_id, imdb_id, tmdb_id) 
+        VALUES ($1, $2, $3, $4, $5, $6)",
+        &[
+            &media.id,
+            &external_id.trakt_id,
+            &external_id.trakt_slug,
+            &external_id.tvdb_id,
+            &external_id.imdb_id,
+            &external_id.tmdb_id,
+        ],
+    )
+    .await
+    .map_err(InsertMediaExternalIdError)?;
+
+    Ok(())
+}
+
+#[derive(Debug, Error)]
 pub enum InsertMovieError {
     #[error("failed to insert media")]
     InsertMedia(#[source] InsertMediaError),
+    #[error("failed to insert media external id")]
+    InsertMediaExternalId(#[source] InsertMediaExternalIdError),
     #[error("failed to insert movie")]
-    Insert(#[source] tokio_postgres::Error),
+    InsertMovie(#[source] tokio_postgres::Error),
     #[error("failed to start transaction")]
     StartTransaction(#[source] tokio_postgres::Error),
     #[error("failed to query if movie already exists")]
@@ -84,6 +122,7 @@ pub enum InsertMovieError {
 pub struct NewMovie {
     pub title: String,
     pub release_year: i32,
+    pub external_ids: Option<MediaExternalId>,
 }
 
 pub async fn insert_movie<C: GenericClient>(
@@ -99,12 +138,18 @@ pub async fn insert_movie<C: GenericClient>(
         .await
         .map_err(InsertMovieError::InsertMedia)?;
 
+    if let Some(external_ids) = &new_movie.external_ids {
+        insert_media_external_id(&tx, &media, external_ids)
+            .await
+            .map_err(InsertMovieError::InsertMediaExternalId)?;
+    }
+
     tx.execute(
         "INSERT INTO movie (id, title, release_year) VALUES ($1, $2, $3)",
         &[&media.id, &new_movie.title, &new_movie.release_year],
     )
     .await
-    .map_err(InsertMovieError::Insert)?;
+    .map_err(InsertMovieError::InsertMovie)?;
 
     tx.commit()
         .await
