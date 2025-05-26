@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>{{ title }}</h1>
+
+<b>Release Year:</b> {{ release_year }}
+
+<h2>Seasons</h2>
+
+<ol>
+    {% for season in seasons %}
+        <li>
+            <span><b>Title:</b> {{ season.title }}</span>
+            
+            <p>Episodes:</p>
+
+            <ol>
+                {% for episode in season.episodes %}
+                    <li>
+                        <span><b>Number:</b> {{ episode.number }}</span>
+                        <span><b>Title:</b> {{ episode.title }}</span>
+                        <span><b>Play Count:</b> {{ episode.play_count }}</span>
+                    </li>
+                {% endfor %}
+            </ol>
+
+        </li>
+    {% endfor %}
+</ol>
+
+{% endblock %}
