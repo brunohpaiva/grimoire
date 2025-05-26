@@ -1,6 +1,20 @@
-use deadpool_postgres::{GenericClient, tokio_postgres};
+use deadpool_postgres::{Config, GenericClient, Pool, Runtime, tokio_postgres};
 use postgres_types::{FromSql, ToSql};
 use thiserror::Error;
+use tokio_postgres::NoTls;
+
+use crate::config::AppConfig;
+
+pub fn create_pool(config: &AppConfig) -> anyhow::Result<Pool> {
+    let mut cfg = Config::new();
+    cfg.host = Some(config.db_host.clone());
+    cfg.port = Some(config.db_port.clone());
+    cfg.dbname = Some(config.db_name.clone());
+    cfg.user = Some(config.db_user.clone());
+    cfg.password = Some(config.db_password.clone());
+
+    Ok(cfg.create_pool(Some(Runtime::Tokio1), NoTls)?)
+}
 
 #[derive(Debug, ToSql, FromSql)]
 #[postgres(name = "media_kind", rename_all = "UPPERCASE")]
@@ -113,8 +127,6 @@ pub enum InsertMovieError {
     InsertMovie(#[source] tokio_postgres::Error),
     #[error("failed to start transaction")]
     StartTransaction(#[source] tokio_postgres::Error),
-    #[error("failed to query if movie already exists")]
-    QueryExisting(#[source] GetMediaIdError),
     #[error("failed to commit transaction")]
     CommitTransaction(#[source] tokio_postgres::Error),
 }
