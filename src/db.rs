@@ -162,6 +162,193 @@ pub async fn insert_movie<C: GenericClient>(
 }
 
 #[derive(Debug, Error)]
+pub enum InsertShowError {
+    #[error("failed to insert media")]
+    InsertMedia(#[source] InsertMediaError),
+    #[error("failed to insert media external id")]
+    InsertMediaExternalId(#[source] InsertMediaExternalIdError),
+    #[error("failed to insert show")]
+    InsertShow(#[source] tokio_postgres::Error),
+    #[error("failed to start transaction")]
+    StartTransaction(#[source] tokio_postgres::Error),
+    #[error("failed to commit transaction")]
+    CommitTransaction(#[source] tokio_postgres::Error),
+}
+
+pub struct NewShow {
+    pub title: String,
+    pub release_year: i32,
+    pub external_ids: Option<MediaExternalId>,
+}
+
+pub async fn insert_show<C: GenericClient>(
+    conn: &mut C,
+    new_show: &NewShow,
+) -> Result<Media, InsertShowError> {
+    let tx = conn
+        .transaction()
+        .await
+        .map_err(InsertShowError::StartTransaction)?;
+
+    let media = insert_media(&tx, MediaKind::Show)
+        .await
+        .map_err(InsertShowError::InsertMedia)?;
+
+    if let Some(external_ids) = &new_show.external_ids {
+        insert_media_external_id(&tx, &media, external_ids)
+            .await
+            .map_err(InsertShowError::InsertMediaExternalId)?;
+    }
+
+    tx.execute(
+        "INSERT INTO show (id, title, release_year) VALUES ($1, $2, $3)",
+        &[&media.id, &new_show.title, &new_show.release_year],
+    )
+    .await
+    .map_err(InsertShowError::InsertShow)?;
+
+    tx.commit()
+        .await
+        .map_err(InsertShowError::CommitTransaction)?;
+
+    Ok(media)
+}
+
+pub async fn get_season_by_show_and_number<C: GenericClient>(
+    conn: &C,
+    show: &Media,
+    number: i32,
+) -> Result<Option<Media>, GetMediaIdError> {
+    conn.query_opt(
+        "SELECT s.id, s.kind FROM season s WHERE s.show_id = $1 AND s.number = $2",
+        &[&show.id, &number],
+    )
+    .await
+    .map_err(GetMediaIdError::Query)
+    .map(|opt_row| {
+        opt_row.map(|row| Media {
+            id: row.get(0),
+            kind: row.get(1),
+        })
+    })
+}
+
+#[derive(Debug, Error)]
+pub enum InsertSeasonError {
+    #[error("failed to insert media")]
+    InsertMedia(#[source] InsertMediaError),
+    #[error("failed to insert media external id")]
+    InsertMediaExternalId(#[source] InsertMediaExternalIdError),
+    #[error("failed to insert season")]
+    InsertSeason(#[source] tokio_postgres::Error),
+    #[error("failed to start transaction")]
+    StartTransaction(#[source] tokio_postgres::Error),
+    #[error("failed to commit transaction")]
+    CommitTransaction(#[source] tokio_postgres::Error),
+}
+
+pub struct NewSeason {
+    pub title: String,
+    pub number: i32,
+    pub external_ids: Option<MediaExternalId>,
+}
+
+pub async fn insert_season<C: GenericClient>(
+    conn: &mut C,
+    show: &Media,
+    new_season: &NewSeason,
+) -> Result<Media, InsertSeasonError> {
+    let tx = conn
+        .transaction()
+        .await
+        .map_err(InsertSeasonError::StartTransaction)?;
+
+    let media = insert_media(&tx, MediaKind::Season)
+        .await
+        .map_err(InsertSeasonError::InsertMedia)?;
+
+    if let Some(external_ids) = &new_season.external_ids {
+        insert_media_external_id(&tx, &media, external_ids)
+            .await
+            .map_err(InsertSeasonError::InsertMediaExternalId)?;
+    }
+
+    tx.execute(
+        "INSERT INTO season (show_id, id, title, number) VALUES ($1, $2, $3, $4)",
+        &[&show.id, &media.id, &new_season.title, &new_season.number],
+    )
+    .await
+    .map_err(InsertSeasonError::InsertSeason)?;
+
+    tx.commit()
+        .await
+        .map_err(InsertSeasonError::CommitTransaction)?;
+
+    Ok(media)
+}
+
+#[derive(Debug, Error)]
+pub enum InsertEpisodeError {
+    #[error("failed to insert media")]
+    InsertMedia(#[source] InsertMediaError),
+    #[error("failed to insert media external id")]
+    InsertMediaExternalId(#[source] InsertMediaExternalIdError),
+    #[error("failed to insert episode")]
+    InsertEpisode(#[source] tokio_postgres::Error),
+    #[error("failed to start transaction")]
+    StartTransaction(#[source] tokio_postgres::Error),
+    #[error("failed to commit transaction")]
+    CommitTransaction(#[source] tokio_postgres::Error),
+}
+
+pub struct NewEpisode {
+    pub title: String,
+    pub number: i32,
+    pub external_ids: Option<MediaExternalId>,
+}
+
+pub async fn insert_episode<C: GenericClient>(
+    conn: &mut C,
+    show: &Media,
+    season: &Media,
+    new_episode: &NewEpisode,
+) -> Result<Media, InsertEpisodeError> {
+    let tx = conn
+        .transaction()
+        .await
+        .map_err(InsertEpisodeError::StartTransaction)?;
+
+    let media = insert_media(&tx, MediaKind::Episode)
+        .await
+        .map_err(InsertEpisodeError::InsertMedia)?;
+
+    if let Some(external_ids) = &new_episode.external_ids {
+        insert_media_external_id(&tx, &media, external_ids)
+            .await
+            .map_err(InsertEpisodeError::InsertMediaExternalId)?;
+    }
+
+    tx.execute(
+        "INSERT INTO episode (show_id, season_id, id, title, number) VALUES ($1, $2, $3, $4, $5)",
+        &[
+            &show.id,
+            &season.id,
+            &media.id,
+            &new_episode.title,
+            &new_episode.number,
+        ],
+    )
+    .await
+    .map_err(InsertEpisodeError::InsertEpisode)?;
+
+    tx.commit()
+        .await
+        .map_err(InsertEpisodeError::CommitTransaction)?;
+
+    Ok(media)
+}
+
+#[derive(Debug, Error)]
 #[error("failed to insert watch history")]
 pub struct InsertWatchHistoryError(#[source] tokio_postgres::Error);
 
