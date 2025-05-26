@@ -9,6 +9,7 @@ use deadpool_postgres::{Config, Pool, Runtime, tokio_postgres::NoTls};
 
 pub mod config;
 pub mod db;
+pub mod trakt;
 
 struct AppState {
     pub pool: Pool,
