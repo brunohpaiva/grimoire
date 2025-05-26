@@ -83,6 +83,7 @@ pub enum InsertMovieError {
 
 pub struct NewMovie {
     pub title: String,
+    pub release_year: i32,
 }
 
 pub async fn insert_movie<C: GenericClient>(
@@ -99,8 +100,8 @@ pub async fn insert_movie<C: GenericClient>(
         .map_err(InsertMovieError::InsertMedia)?;
 
     tx.execute(
-        "INSERT INTO movie (id, title) VALUES ($1, $2)",
-        &[&media.id, &new_movie.title],
+        "INSERT INTO movie (id, title, release_year) VALUES ($1, $2, $3)",
+        &[&media.id, &new_movie.title, &new_movie.release_year],
     )
     .await
     .map_err(InsertMovieError::Insert)?;

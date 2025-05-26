@@ -25,6 +25,7 @@ CREATE TABLE movie (
     id INT NOT NULL PRIMARY KEY,
     kind media_kind NOT NULL GENERATED ALWAYS AS ('MOVIE'::media_kind) STORED,
     title TEXT NOT NULL,
+    release_year INT NOT NULL,
     FOREIGN KEY (id, kind) REFERENCES media (id, kind)
 );
 
@@ -32,6 +33,7 @@ CREATE TABLE show (
     id INT NOT NULL PRIMARY KEY,
     kind media_kind NOT NULL GENERATED ALWAYS AS ('SHOW'::media_kind) STORED,
     title TEXT NOT NULL,
+    release_year INT NOT NULL,
     FOREIGN KEY (id, kind) REFERENCES media (id, kind)
 );
 
