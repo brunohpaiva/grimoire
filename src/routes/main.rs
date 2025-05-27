@@ -21,8 +21,8 @@ pub fn build_router() -> Router<Arc<AppState>> {
 }
 
 struct RecentlyWatchedEntry {
-    watched_at: jiff::Timestamp,
-    media_kind: MediaKind,
+    // watched_at: jiff::Timestamp,
+    url: String,
     title: String,
     season_title: Option<String>,
     show_title: Option<String>,
@@ -45,10 +45,10 @@ async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTemplate, 
     let rows = conn
         .query(
             "
-            SELECT wh.watched_at, wh.media_kind, 
+            SELECT wh.media_id, wh.media_kind, 
             COALESCE(ep.title, mo.title) AS title,
             se.title AS season_title,
-            sh.title AS show_title FROM watch_history wh
+            sh.title AS show_title, sh.id AS show_id FROM watch_history wh
             LEFT JOIN movie mo ON wh.media_id = mo.id AND wh.media_kind = 'MOVIE'
             LEFT JOIN episode ep ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
             LEFT JOIN season se ON ep.season_id = se.id AND ep.show_id = se.show_id
@@ -63,12 +63,28 @@ async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTemplate, 
 
     let recently_watched = rows
         .iter()
-        .map(|row| RecentlyWatchedEntry {
-            watched_at: row.get(0),
-            media_kind: row.get(1),
-            title: row.get(2),
-            season_title: row.get(3),
-            show_title: row.get(4),
+        .map(|row| {
+            let media_kind: MediaKind = row.get(1);
+
+            RecentlyWatchedEntry {
+                url: match media_kind {
+                    MediaKind::Movie => {
+                        let id: i32 = row.get(0);
+                        format!("/movie/{}", id)
+                    }
+                    MediaKind::Episode => {
+                        // TODO: page for specific episodes...
+                        let show_id = row
+                            .get::<_, Option<i32>>(5)
+                            .expect("show_id null in watch_history row");
+                        format!("/show/{}", show_id)
+                    }
+                    _ => unreachable!("invalid media_kind in watch_history table"),
+                },
+                title: row.get(2),
+                season_title: row.get(3),
+                show_title: row.get(4),
+            }
         })
         .collect();
 

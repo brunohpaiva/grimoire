@@ -11,7 +11,7 @@
     <ol>
         {% for entry in recently_watched %}
             <li>
-                Title: {{ entry.title }}
+                <a href="{{ entry.url }}">Title: {{ entry.title }}</a>
                 {% if let Some(text) = entry.season_title %}
                     Season: {{ text }}
                 {% endif %}
