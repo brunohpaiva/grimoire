@@ -20,6 +20,9 @@
                         <span><b>Number:</b> {{ episode.number }}</span>
                         <span><b>Title:</b> {{ episode.title }}</span>
                         <span><b>Play Count:</b> {{ episode.play_count }}</span>
+                        <form method="POST" action="/add-watch?media_kind=episode&id={{ episode.id }}">
+                            <button type="submit">Add play</button>
+                        </form>
                     </li>
                 {% endfor %}
             </ol>

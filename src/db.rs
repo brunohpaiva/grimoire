@@ -1,5 +1,6 @@
 use deadpool_postgres::{Config, GenericClient, Pool, Runtime, tokio_postgres};
 use postgres_types::{FromSql, ToSql};
+use serde::Deserialize;
 use thiserror::Error;
 use tokio_postgres::NoTls;
 
@@ -16,8 +17,9 @@ pub fn create_pool(config: &AppConfig) -> anyhow::Result<Pool> {
     Ok(cfg.create_pool(Some(Runtime::Tokio1), NoTls)?)
 }
 
-#[derive(Debug, ToSql, FromSql)]
+#[derive(Debug, Deserialize, ToSql, FromSql)]
 #[postgres(name = "media_kind", rename_all = "UPPERCASE")]
+#[serde(rename_all = "lowercase")]
 pub enum MediaKind {
     Movie,
     Show,
@@ -41,9 +43,40 @@ pub struct MediaExternalId {
 }
 
 #[derive(Debug, Error)]
-pub enum GetMediaIdError {
-    #[error("failed to query media id")]
-    Query(#[source] tokio_postgres::Error),
+#[error("failed to query media id")]
+pub struct GetMediaIdError(#[source] tokio_postgres::Error);
+
+pub async fn get_media_by_id<C: GenericClient>(
+    conn: &C,
+    id: i32,
+    media_kind: Option<MediaKind>,
+) -> Result<Option<Media>, GetMediaIdError> {
+    // TODO: simplify this
+    if let Some(media_kind) = media_kind {
+        conn.query_opt(
+            "SELECT m.id, m.kind FROM media m
+            WHERE m.id = $1 AND m.kind = $2",
+            &[&id, &media_kind],
+        )
+        .await
+        .map_err(GetMediaIdError)
+        .map(|opt_row| {
+            opt_row.map(|row| Media {
+                id: row.get(0),
+                kind: row.get(1),
+            })
+        })
+    } else {
+        conn.query_opt("SELECT m.id, m.kind FROM media m WHERE m.id = $1", &[&id])
+            .await
+            .map_err(GetMediaIdError)
+            .map(|opt_row| {
+                opt_row.map(|row| Media {
+                    id: row.get(0),
+                    kind: row.get(1),
+                })
+            })
+    }
 }
 
 pub async fn get_media_by_trakt_id<C: GenericClient>(
@@ -58,7 +91,7 @@ pub async fn get_media_by_trakt_id<C: GenericClient>(
         &[&trakt_id],
     )
     .await
-    .map_err(GetMediaIdError::Query)
+    .map_err(GetMediaIdError)
     .map(|opt_row| {
         opt_row.map(|row| Media {
             id: row.get(0),
@@ -236,7 +269,7 @@ pub async fn get_season_by_show_and_number<C: GenericClient>(
         &[&show.id, &number],
     )
     .await
-    .map_err(GetMediaIdError::Query)
+    .map_err(GetMediaIdError)
     .map(|opt_row| {
         opt_row.map(|row| Media {
             id: row.get(0),
@@ -370,7 +403,7 @@ pub struct WatchHistory {
 }
 
 pub async fn insert_watch_history<C: GenericClient>(
-    conn: &mut C,
+    conn: &C,
     watch_history: &WatchHistory,
 ) -> Result<(), InsertWatchHistoryError> {
     conn.execute(

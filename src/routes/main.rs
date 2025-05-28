@@ -4,13 +4,17 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{
     Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
+    response::{IntoResponse, Redirect, Response},
+    routing::{get, post},
 };
+use serde::Deserialize;
 
-use crate::{AppState, db::MediaKind};
+use crate::{
+    AppState,
+    db::{MediaKind, WatchHistory, get_media_by_id, insert_watch_history},
+};
 
 pub fn build_router() -> Router<Arc<AppState>> {
     Router::new()
@@ -18,6 +22,7 @@ pub fn build_router() -> Router<Arc<AppState>> {
         // TODO: accept slugs for movie and show
         .route("/movie/{movie_id}", get(get_movie))
         .route("/show/{show_id}", get(get_show))
+        .route("/add-watch", post(add_watch))
 }
 
 struct RecentlyWatchedEntry {
@@ -94,6 +99,7 @@ async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTemplate, 
 #[derive(Template, WebTemplate)]
 #[template(path = "movie.html")]
 struct MovieTemplate {
+    id: i32,
     title: String,
     release_year: i32,
     play_count: i64,
@@ -113,7 +119,7 @@ async fn get_movie(
     let Some(row) = conn
         .query_opt(
             "
-            SELECT mo.title, mo.release_year, COUNT(wh.watched_at) AS play_count FROM movie mo
+            SELECT mo.id, mo.title, mo.release_year, COUNT(wh.watched_at) AS play_count FROM movie mo
             LEFT JOIN watch_history wh ON mo.id = wh.media_id AND wh.media_kind = 'MOVIE'
             WHERE mo.id = $1
             GROUP BY mo.id
@@ -127,13 +133,15 @@ async fn get_movie(
     };
 
     Ok(MovieTemplate {
-        title: row.get(0),
-        release_year: row.get(1),
-        play_count: row.get(2),
+        id: row.get(0),
+        title: row.get(1),
+        release_year: row.get(2),
+        play_count: row.get(3),
     })
 }
 
 struct Episode {
+    id: i32,
     title: String,
     number: i32,
     play_count: i64,
@@ -175,7 +183,7 @@ async fn get_show(
             "
             select sh.title AS show_title, sh.release_year AS show_release_year, 
             se.title AS season_title, se.number AS season_numer,
-            ep.title AS episode_title, ep.number AS episode_number,
+            ep.id AS episode_id, ep.title AS episode_title, ep.number AS episode_number,
             COUNT(wh.watched_at) AS play_count from show sh
             LEFT JOIN season se ON se.show_id = sh.id
             LEFT JOIN episode ep ON ep.show_id = sh.id AND ep.season_id = se.id
@@ -211,11 +219,51 @@ async fn get_show(
         };
 
         season.episodes.push(Episode {
-            title: row.get(4),
-            number: row.get(5),
-            play_count: row.get(6),
+            id: row.get(4),
+            title: row.get(5),
+            number: row.get(6),
+            play_count: row.get(7),
         });
     }
 
     Ok(template)
+}
+
+#[derive(Deserialize)]
+struct AddWatchParams {
+    media_kind: MediaKind,
+    id: i32,
+}
+
+async fn add_watch(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<AddWatchParams>,
+) -> Result<Redirect, Response> {
+    let conn = state
+        .pool
+        .get()
+        .await
+        .inspect_err(|err| eprintln!("{:?}", err))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+
+    let Some(media) = get_media_by_id(&conn, params.id, Some(params.media_kind))
+        .await
+        .inspect_err(|err| eprintln!("{:?}", err))
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+    else {
+        return Err(StatusCode::NOT_FOUND.into_response());
+    };
+
+    insert_watch_history(
+        &conn,
+        &WatchHistory {
+            media,
+            watched_at: jiff::Timestamp::now(),
+        },
+    )
+    .await
+    .inspect_err(|err| eprintln!("{:?}", err))
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+
+    Ok(Redirect::to("/"))
 }

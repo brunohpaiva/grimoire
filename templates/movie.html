@@ -6,4 +6,8 @@
 <span><b>Release Year:</b> {{ release_year }}</span>
 <span><b>Play Count:</b> {{ play_count }}</span>
 
+<form method="POST" action="/add-watch?media_kind=movie&id={{ id }}">
+    <button type="submit">Add play</button>
+</form>
+
 {% endblock %}
