@@ -8,6 +8,7 @@ use deadpool_postgres::Pool;
 pub mod config;
 mod db;
 mod routes;
+pub mod tmdb;
 pub mod trakt;
 
 struct AppState {
