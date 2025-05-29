@@ -21,6 +21,20 @@ CREATE TABLE media_external_id (
     FOREIGN KEY (media_id) REFERENCES media (id)
 );
 
+CREATE TYPE image_kind AS ENUM (
+    'POSTER',
+    'BACKDROP',
+    'STILL'
+);
+
+CREATE TABLE media_image (
+    media_id INT NOT NULL PRIMARY KEY,
+    image_kind image_kind NOT NULL,
+    file_path TEXT NOT NULL,
+    lang_code VARCHAR(2) DEFAULT NULL, -- ISO-639-1 lang code
+    FOREIGN KEY (media_id) REFERENCES media (id)
+);
+
 CREATE TABLE movie (
     id INT NOT NULL PRIMARY KEY,
     kind media_kind NOT NULL GENERATED ALWAYS AS ('MOVIE'::media_kind) STORED,

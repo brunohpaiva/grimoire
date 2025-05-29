@@ -42,6 +42,22 @@ pub struct MediaExternalId {
     pub tmdb_id: Option<i32>,
 }
 
+#[derive(Debug, Deserialize, ToSql, FromSql)]
+#[postgres(name = "media_kind", rename_all = "UPPERCASE")]
+#[serde(rename_all = "lowercase")]
+pub enum ImageKind {
+    POSTER,
+    BACKDROP,
+    STILL,
+}
+
+#[derive(Debug)]
+pub struct MediaImage {
+    pub kind: ImageKind,
+    pub file_path: String,
+    pub lang_code: Option<String>,
+}
+
 #[derive(Debug, Error)]
 #[error("failed to query media id")]
 pub struct GetMediaIdError(#[source] tokio_postgres::Error);
@@ -609,6 +625,28 @@ pub async fn insert_list_item<C: GenericClient>(
     )
     .await
     .map_err(InsertListItemError)?;
+
+    Ok(())
+}
+
+#[derive(Debug, Error)]
+#[error("failed to insert media image")]
+pub struct InsertMediaImageError(#[source] tokio_postgres::Error);
+
+pub async fn insert_media_image<C: GenericClient>(
+    conn: &C,
+    media: &Media,
+    image: &MediaImage,
+) -> Result<(), InsertMediaImageError> {
+    conn.execute(
+        "
+        INSERT INTO media_image (media_id, image_kind, file_path, lang_code) 
+        VALUES ($1, $2, $3, $4)
+        ",
+        &[&media.id, &image.kind, &image.file_path, &image.lang_code],
+    )
+    .await
+    .map_err(InsertMediaImageError)?;
 
     Ok(())
 }
