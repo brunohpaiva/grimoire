@@ -11,6 +11,11 @@
         <li><a href="/">Home</a></li>
     </ul>
 
+    <form action="/search">
+        <input type="text" name="query">
+        <button type="submit">Search</button>
+    </form>
+
     {% block body %}{% endblock %}
 </body>
 </html>

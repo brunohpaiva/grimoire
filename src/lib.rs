@@ -13,12 +13,14 @@ pub mod trakt;
 
 struct AppState {
     pub pool: Pool,
+    pub tmdb_api: tmdb::TmdbApi,
 }
 
 pub async fn start_server(config: AppConfig) -> Result<()> {
     let pool = db::create_pool(&config)?;
+    let tmdb_api = tmdb::TmdbApi::new(&config.tmdb_api_key);
 
-    let state = Arc::new(AppState { pool });
+    let state = Arc::new(AppState { pool, tmdb_api });
 
     let app = Router::new()
         .merge(routes::main::build_router())

@@ -9,6 +9,9 @@ pub struct TmdbApi {
 #[derive(Deserialize)]
 pub struct ImageSize(String);
 
+#[derive(Deserialize, Debug)]
+pub struct TmdbId(i32);
+
 pub struct MovieId(i32);
 
 pub struct ShowId(i32);
@@ -38,7 +41,7 @@ pub struct Images {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ListResult<T> {
+pub struct ListResponse<T> {
     pub page: i32,
     pub results: Vec<T>,
     pub total_pages: i32,
@@ -47,12 +50,13 @@ pub struct ListResult<T> {
 
 #[derive(Deserialize, Debug)]
 pub struct SearchResultEntry {
+    pub id: TmdbId,
     #[serde(alias = "name")]
     pub title: String,
     #[serde(alias = "original_name")]
     pub original_title: String,
     pub overview: String,
-    pub poster_path: String,
+    pub poster_path: Option<String>,
     pub media_type: String,
     pub original_language: String,
     #[serde(deserialize_with = "empty_string_as_none", alias = "first_air_date")]
@@ -83,8 +87,11 @@ impl TmdbApi {
         }
     }
 
-    pub async fn multi_search(&self, query: &str) -> anyhow::Result<ListResult<SearchResultEntry>> {
-        let results: ListResult<SearchResultEntry> = self
+    pub async fn multi_search(
+        &self,
+        query: &str,
+    ) -> anyhow::Result<ListResponse<SearchResultEntry>> {
+        let response: ListResponse<SearchResultEntry> = self
             .client
             .get(format!("{}/search/multi", Self::BASE_URL))
             .query(&[("query", query)])
@@ -93,7 +100,7 @@ impl TmdbApi {
             .await?
             .json()
             .await?;
-        Ok(results)
+        Ok(response)
     }
 
     pub async fn fetch_config(&self) -> anyhow::Result<Config> {

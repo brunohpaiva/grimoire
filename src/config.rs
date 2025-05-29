@@ -7,6 +7,8 @@ pub struct AppConfig {
     pub db_name: String,
     pub db_user: String,
     pub db_password: String,
+    // TODO: make TMDB api usage optional
+    pub tmdb_api_key: String,
 }
 
 impl AppConfig {
@@ -21,6 +23,7 @@ impl AppConfig {
         let db_name = std::env::var("DB_NAME").unwrap_or("chlorine".to_string());
         let db_user = std::env::var("DB_USER").unwrap_or("user".to_string());
         let db_password = std::env::var("DB_PASSWORD").unwrap_or("password".to_string());
+        let tmdb_api_key = std::env::var("TMDB_API_KEY").unwrap_or("api-key".to_string());
 
         Ok(Self {
             addr,
@@ -29,6 +32,7 @@ impl AppConfig {
             db_name,
             db_user,
             db_password,
+            tmdb_api_key,
         })
     }
 }

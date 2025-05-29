@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h1>Search results</h1>
+
+<ol>
+    {% for result in results %}
+        <li>
+            <span><b>Title:</b> {{ result.title }}</span>
+        </li>
+    {% endfor %}
+</ol>
+
+{% endblock %}

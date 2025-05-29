@@ -10,6 +10,7 @@ use crate::AppState;
 mod add_watch;
 mod index;
 mod movie;
+mod search;
 mod show;
 
 pub fn build_router() -> Router<Arc<AppState>> {
@@ -19,4 +20,5 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route("/movie/{movie_id}", get(movie::get_movie))
         .route("/show/{show_id}", get(show::get_show))
         .route("/add-watch", post(add_watch::post_add_watch))
+        .route("/search", get(search::get_search))
 }
