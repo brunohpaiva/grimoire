@@ -1,7 +1,12 @@
 use std::fmt::Display;
 
 use jiff::civil::Date;
-use serde::{Deserialize, de::IntoDeserializer};
+use reqwest::StatusCode;
+use serde::{
+    Deserialize,
+    de::{DeserializeOwned, IntoDeserializer},
+};
+use thiserror::Error;
 
 pub struct TmdbApi {
     api_key: String,
@@ -127,6 +132,28 @@ where
     }
 }
 
+#[derive(Deserialize, Debug)]
+pub struct TmdbApiError {
+    #[serde(rename = "status_code")]
+    pub code: i32,
+    #[serde(rename = "status_message")]
+    pub message: String,
+}
+
+#[derive(Error, Debug)]
+pub enum ApiError {
+    #[error("failed to connect")]
+    Connect(#[source] reqwest::Error),
+    #[error("failed to parse response")]
+    Parsing(#[source] reqwest::Error),
+    #[error("unknown http error")]
+    UnknownHttp(#[source] reqwest::Error),
+    #[error("resource not found")]
+    NotFound,
+    #[error("unknown api error")]
+    Unknown(TmdbApiError),
+}
+
 impl TmdbApi {
     const BASE_URL: &'static str = "https://api.themoviedb.org/3";
 
@@ -141,68 +168,86 @@ impl TmdbApi {
     pub async fn multi_search(
         &self,
         query: &str,
-    ) -> anyhow::Result<ListResponse<SearchResultEntry>> {
+    ) -> Result<ListResponse<SearchResultEntry>, ApiError> {
         // TODO: handle person results
-        let response: ListResponse<SearchResultEntry> = self
-            .client
-            .get(format!("{}/search/multi", Self::BASE_URL))
-            .query(&[("query", query)])
-            .bearer_auth(self.api_key.to_string())
-            .send()
-            .await?
-            .json()
-            .await?;
-        Ok(response)
+        Self::json_request(
+            self.client
+                .get(format!("{}/search/multi", Self::BASE_URL))
+                .query(&[("query", query)])
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
     }
 
-    pub async fn fetch_config(&self) -> anyhow::Result<Config> {
-        let config: Config = self
-            .client
-            .get(format!("{}/configuration", Self::BASE_URL))
-            .bearer_auth(self.api_key.to_string())
-            .send()
-            .await?
-            .json()
-            .await?;
-        Ok(config)
+    pub async fn fetch_config(&self) -> Result<Config, ApiError> {
+        Self::json_request(
+            self.client
+                .get(format!("{}/configuration", Self::BASE_URL))
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
     }
 
-    pub async fn fetch_full_movie(&self, movie_id: &TmdbId) -> anyhow::Result<FullMovie> {
-        let res: FullMovie = self
-            .client
-            .get(format!("{}/movie/{}", Self::BASE_URL, movie_id.0))
-            .bearer_auth(self.api_key.to_string())
-            .send()
-            .await?
-            .json()
-            .await?;
-        Ok(res)
+    pub async fn fetch_full_movie(&self, movie_id: &TmdbId) -> Result<FullMovie, ApiError> {
+        Self::json_request(
+            self.client
+                .get(format!("{}/movie/{}", Self::BASE_URL, movie_id.0))
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
     }
 
-    pub async fn fetch_full_show(&self, show_id: &TmdbId) -> anyhow::Result<FullShow> {
-        let res: FullShow = self
-            .client
-            .get(format!("{}/tv/{}", Self::BASE_URL, show_id.0))
-            .bearer_auth(self.api_key.to_string())
-            .send()
-            .await?
-            .json()
-            .await?;
-        Ok(res)
+    pub async fn fetch_full_show(&self, show_id: &TmdbId) -> Result<FullShow, ApiError> {
+        Self::json_request(
+            self.client
+                .get(format!("{}/tv/{}", Self::BASE_URL, show_id.0))
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
     }
 
-    pub async fn fetch_movie_images(&self, movie_id: &TmdbId) -> anyhow::Result<Images> {
-        let images: Images = self
-            .client
-            .get(format!("{}/movie/{}/images", Self::BASE_URL, movie_id.0))
-            .bearer_auth(self.api_key.to_string())
-            .send()
-            .await?
-            .json()
-            .await?;
-
-        Ok(images)
+    pub async fn fetch_movie_images(&self, movie_id: &TmdbId) -> Result<Images, ApiError> {
+        Self::json_request(
+            self.client
+                .get(format!("{}/movie/{}/images", Self::BASE_URL, movie_id.0))
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
     }
+
+    async fn json_request<T: DeserializeOwned>(
+        req: reqwest::RequestBuilder,
+    ) -> Result<T, ApiError> {
+        let res = req.send().await.map_err(map_reqwest_error)?;
+
+        let status = res.status();
+
+        if !status.is_success() {
+            return match status {
+                StatusCode::NOT_FOUND => Err(ApiError::NotFound),
+                _ => {
+                    let api_error = res.json().await.map_err(map_reqwest_error);
+                    match api_error {
+                        Ok(err) => Err(ApiError::Unknown(err)),
+                        Err(err) => Err(err),
+                    }
+                }
+            };
+        }
+
+        res.json().await.map_err(map_reqwest_error)
+    }
+}
+
+fn map_reqwest_error(err: reqwest::Error) -> ApiError {
+    if err.is_connect() {
+        return ApiError::Connect(err);
+    }
+    if err.is_decode() {
+        return ApiError::Parsing(err);
+    }
+
+    ApiError::UnknownHttp(err)
 }
 
 pub fn build_image_url(base_url: &str, size: &ImageSize, image_path: &str) -> String {
