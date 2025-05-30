@@ -7,6 +7,9 @@
     {% for result in results %}
         <li>
             <span><b>Title:</b> {{ result.title }}</span>
+            <form method="POST" action="/add-media?tmdb_type={{ result.tmdb_type }}&tmdb_id={{ result.tmdb_id }}">
+                <button type="submit">Go to media</button>
+            </form>
         </li>
     {% endfor %}
 </ol>

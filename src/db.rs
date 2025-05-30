@@ -4,7 +4,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use tokio_postgres::NoTls;
 
-use crate::config::AppConfig;
+use crate::{config::AppConfig, tmdb::TmdbId};
 
 pub fn create_pool(config: &AppConfig) -> anyhow::Result<Pool> {
     let mut cfg = Config::new();
@@ -29,8 +29,8 @@ pub enum MediaKind {
 
 #[derive(Debug)]
 pub struct Media {
-    id: i32,
-    kind: MediaKind,
+    pub id: i32,
+    pub kind: MediaKind,
 }
 
 #[derive(Debug)]
@@ -77,6 +77,28 @@ pub async fn get_media_by_id<C: GenericClient>(
                 })
             })
     }
+}
+
+pub async fn get_media_by_tmdb_id<C: GenericClient>(
+    conn: &C,
+    tmdb_id: &TmdbId,
+    media_kind: &MediaKind,
+) -> Result<Option<Media>, GetMediaIdError> {
+    conn.query_opt(
+        "SELECT m.id, m.kind FROM media_external_id mei 
+            INNER JOIN media m ON mei.media_id = m.id
+            WHERE mei.tmdb_id = $1 AND m.kind = $2
+            ",
+        &[&tmdb_id.0, &media_kind],
+    )
+    .await
+    .map_err(GetMediaIdError)
+    .map(|opt_row| {
+        opt_row.map(|row| Media {
+            id: row.get(0),
+            kind: row.get(1),
+        })
+    })
 }
 
 pub async fn get_media_by_trakt_id<C: GenericClient>(
@@ -167,6 +189,9 @@ pub enum InsertMovieError {
 pub struct NewMovie {
     pub title: String,
     pub release_year: i32,
+    pub overview: Option<String>,
+    pub tagline: Option<String>,
+    pub runtime: Option<i32>,
     pub external_ids: Option<MediaExternalId>,
 }
 
@@ -190,8 +215,15 @@ pub async fn insert_movie<C: GenericClient>(
     }
 
     tx.execute(
-        "INSERT INTO movie (id, title, release_year) VALUES ($1, $2, $3)",
-        &[&media.id, &new_movie.title, &new_movie.release_year],
+        "INSERT INTO movie (id, title, release_year, overview, tagline, runtime) VALUES ($1, $2, $3, $4, $5, $6)",
+        &[
+            &media.id,
+            &new_movie.title,
+            &new_movie.release_year,
+            &new_movie.overview,
+            &new_movie.tagline,
+            &new_movie.runtime
+        ],
     )
     .await
     .map_err(InsertMovieError::InsertMovie)?;
@@ -214,6 +246,8 @@ pub enum InsertShowError {
     InsertMediaExternalId(#[source] InsertMediaExternalIdError),
     #[error("failed to insert show")]
     InsertShow(#[source] tokio_postgres::Error),
+    #[error("failed to insert season")]
+    InsertSeason(#[source] InsertSeasonError),
     #[error("failed to start transaction")]
     StartTransaction(#[source] tokio_postgres::Error),
     #[error("failed to commit transaction")]
@@ -223,14 +257,18 @@ pub enum InsertShowError {
 pub struct NewShow {
     pub title: String,
     pub release_year: i32,
+    pub overview: Option<String>,
+    pub tagline: Option<String>,
+    pub episode_runtime: Option<i32>,
     pub external_ids: Option<MediaExternalId>,
+    pub seasons: Option<Vec<NewSeason>>,
 }
 
 pub async fn insert_show<C: GenericClient>(
     conn: &mut C,
     new_show: &NewShow,
 ) -> Result<Media, InsertShowError> {
-    let tx = conn
+    let mut tx = conn
         .transaction()
         .await
         .map_err(InsertShowError::StartTransaction)?;
@@ -246,11 +284,19 @@ pub async fn insert_show<C: GenericClient>(
     }
 
     tx.execute(
-        "INSERT INTO show (id, title, release_year) VALUES ($1, $2, $3)",
-        &[&media.id, &new_show.title, &new_show.release_year],
+        "INSERT INTO show (id, title, release_year, overview, tagline, episode_runtime) VALUES ($1, $2, $3, $4, $5, $6)",
+        &[&media.id, &new_show.title, &new_show.release_year, &new_show.overview, &new_show.tagline, &new_show.episode_runtime],
     )
     .await
     .map_err(InsertShowError::InsertShow)?;
+
+    if let Some(seasons) = &new_show.seasons {
+        for season in seasons {
+            insert_season(&mut tx, &media, season)
+                .await
+                .map_err(InsertShowError::InsertSeason)?;
+        }
+    }
 
     tx.commit()
         .await
@@ -295,6 +341,7 @@ pub enum InsertSeasonError {
 pub struct NewSeason {
     pub title: String,
     pub number: i32,
+    pub overview: Option<String>,
     pub external_ids: Option<MediaExternalId>,
 }
 
@@ -319,8 +366,14 @@ pub async fn insert_season<C: GenericClient>(
     }
 
     tx.execute(
-        "INSERT INTO season (show_id, id, title, number) VALUES ($1, $2, $3, $4)",
-        &[&show.id, &media.id, &new_season.title, &new_season.number],
+        "INSERT INTO season (show_id, id, title, number, overview) VALUES ($1, $2, $3, $4, $5)",
+        &[
+            &show.id,
+            &media.id,
+            &new_season.title,
+            &new_season.number,
+            &new_season.overview,
+        ],
     )
     .await
     .map_err(InsertSeasonError::InsertSeason)?;

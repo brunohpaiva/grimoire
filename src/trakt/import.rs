@@ -81,7 +81,6 @@ pub async fn import_zip<C: GenericClient, R: std::io::Read + std::io::Seek>(
     Ok(())
 }
 
-
 // TODO: error handling
 // TODO: importing is quite slow right now. Caching shows and seasons would be nicer
 pub async fn import<C: GenericClient, R: std::io::Read>(
@@ -113,7 +112,11 @@ pub async fn import<C: GenericClient, R: std::io::Read>(
                             &NewShow {
                                 title: trakt_show.title,
                                 release_year: trakt_show.year,
+                                overview: None,
+                                tagline: None,
+                                episode_runtime: None,
                                 external_ids: Some(show_external_ids),
+                                seasons: None,
                             },
                         )
                         .await?
@@ -132,6 +135,7 @@ pub async fn import<C: GenericClient, R: std::io::Read>(
                                 &NewSeason {
                                     title: format!("Season {}", trakt_episode.season_number),
                                     number: trakt_episode.season_number,
+                                    overview: None,
                                     external_ids: None,
                                 },
                             )
@@ -191,6 +195,9 @@ pub async fn import<C: GenericClient, R: std::io::Read>(
                                 title: trakt_movie.title,
                                 release_year: trakt_movie.year,
                                 external_ids: Some(external_ids),
+                                overview: None,
+                                tagline: None,
+                                runtime: None,
                             },
                         )
                         .await?

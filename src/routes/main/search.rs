@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::AppState;
+use crate::{AppState, tmdb::TmdbId};
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -17,7 +17,10 @@ pub struct SearchParams {
 }
 
 struct SearchResultEntry {
+    tmdb_id: TmdbId,
     title: String,
+    // TODO: type this as MediaKind ?
+    tmdb_type: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -42,7 +45,9 @@ pub async fn get_search(
         .results
         .iter()
         .map(|entry| SearchResultEntry {
+            tmdb_id: entry.id.clone(),
             title: entry.title.to_string(),
+            tmdb_type: entry.media_type.to_string(),
         })
         .collect();
 

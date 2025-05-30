@@ -51,10 +51,10 @@ pub async fn get_show(
     let rows = conn
         .query(
             "
-            select sh.title AS show_title, sh.release_year AS show_release_year, 
-            se.title AS season_title, se.number AS season_numer,
+            SELECT sh.title AS show_title, sh.release_year AS show_release_year, 
+            se.title AS season_title, se.number AS season_number,
             ep.id AS episode_id, ep.title AS episode_title, ep.number AS episode_number,
-            COUNT(wh.watched_at) AS play_count from show sh
+            COUNT(wh.watched_at) AS play_count FROM show sh
             LEFT JOIN season se ON se.show_id = sh.id
             LEFT JOIN episode ep ON ep.show_id = sh.id AND ep.season_id = se.id
             LEFT JOIN watch_history wh ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
@@ -74,22 +74,33 @@ pub async fn get_show(
             template.release_year = row.get(1);
         }
 
-        let season_number: i32 = row.get(3);
-        let season_idx = (season_number - 1) as usize;
+        let Some(season_number) = row.get::<_, Option<i32>>(3) else {
+            continue;
+        };
+        let season_idx_opt = template
+            .seasons
+            .iter()
+            .position(|season| season.number == season_number);
 
-        let season = if season_idx >= template.seasons.len() {
-            template.seasons.push(Season {
-                title: row.get(2),
-                number: season_number,
-                episodes: vec![],
-            });
-            &mut template.seasons[season_idx]
-        } else {
-            &mut template.seasons[season_idx]
+        let season = match season_idx_opt {
+            Some(season_idx) => &mut template.seasons[season_idx],
+            None => {
+                let idx = template.seasons.len();
+                template.seasons.push(Season {
+                    title: row.get(2),
+                    number: season_number,
+                    episodes: vec![],
+                });
+                &mut template.seasons[idx]
+            }
+        };
+
+        let Some(episode_id) = row.get::<_, Option<i32>>(4) else {
+            continue;
         };
 
         season.episodes.push(Episode {
-            id: row.get(4),
+            id: episode_id,
             title: row.get(5),
             number: row.get(6),
             play_count: row.get(7),

@@ -26,6 +26,9 @@ CREATE TABLE movie (
     kind media_kind NOT NULL GENERATED ALWAYS AS ('MOVIE'::media_kind) STORED,
     title TEXT NOT NULL,
     release_year INT NOT NULL,
+    overview TEXT,
+    tagline TEXT,
+    runtime INT,
     FOREIGN KEY (id, kind) REFERENCES media (id, kind)
 );
 
@@ -34,6 +37,9 @@ CREATE TABLE show (
     kind media_kind NOT NULL GENERATED ALWAYS AS ('SHOW'::media_kind) STORED,
     title TEXT NOT NULL,
     release_year INT NOT NULL,
+    overview TEXT,
+    tagline TEXT,
+    episode_runtime INT,
     FOREIGN KEY (id, kind) REFERENCES media (id, kind)
 );
 
@@ -43,6 +49,7 @@ CREATE TABLE season (
     kind media_kind NOT NULL GENERATED ALWAYS AS ('SEASON'::media_kind) STORED,
     title TEXT NOT NULL,
     number INT NOT NULL,
+    overview TEXT,
     FOREIGN KEY (show_id) REFERENCES show (id),
     FOREIGN KEY (id, kind) REFERENCES media (id, kind),
     UNIQUE (show_id, number)
