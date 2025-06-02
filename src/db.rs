@@ -6,7 +6,7 @@ use tokio_postgres::NoTls;
 
 use crate::{config::AppConfig, tmdb::TmdbId};
 
-pub fn create_pool(config: &AppConfig) -> anyhow::Result<Pool> {
+pub fn create_pool(config: &AppConfig) -> Result<Pool, deadpool_postgres::CreatePoolError> {
     let mut cfg = Config::new();
     cfg.host = Some(config.db_host.clone());
     cfg.port = Some(config.db_port.clone());

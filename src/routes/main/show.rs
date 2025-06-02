@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use askama::Template;
-use askama_web::WebTemplate;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
 };
 
-use crate::AppState;
+use crate::{
+    AppState,
+    response::{AppError, HtmlTemplate},
+};
 
 struct Episode {
     id: i32,
@@ -23,7 +24,7 @@ struct Season {
     episodes: Vec<Episode>,
 }
 
-#[derive(Template, WebTemplate)]
+#[derive(Template)]
 #[template(path = "show.html")]
 pub struct ShowTemplate {
     title: String,
@@ -34,19 +35,12 @@ pub struct ShowTemplate {
 pub async fn get_show(
     State(state): State<Arc<AppState>>,
     Path(show_id): Path<i32>,
-) -> Result<ShowTemplate, Response> {
+) -> Result<impl IntoResponse, AppError> {
     let conn = state
         .pool
         .get()
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
-
-    let mut template = ShowTemplate {
-        title: String::new(),
-        release_year: 0,
-        seasons: vec![],
-    };
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let rows = conn
         .query(
@@ -65,8 +59,17 @@ pub async fn get_show(
             &[&show_id],
         )
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
+
+    if rows.is_empty() {
+        return Err(AppError::NotFound);
+    }
+
+    let mut template = ShowTemplate {
+        title: String::new(),
+        release_year: 0,
+        seasons: vec![],
+    };
 
     for (row_idx, row) in rows.iter().enumerate() {
         if row_idx == 0 {
@@ -107,5 +110,5 @@ pub async fn get_show(
         });
     }
 
-    Ok(template)
+    Ok(HtmlTemplate(template))
 }

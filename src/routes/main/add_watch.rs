@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::Redirect,
 };
 use serde::Deserialize;
 
 use crate::{
     AppState,
     db::{MediaKind, WatchHistory, get_media_by_id, insert_watch_history},
+    response::AppError,
 };
 
 #[derive(Deserialize)]
@@ -21,20 +21,18 @@ pub struct AddWatchParams {
 pub async fn post_add_watch(
     State(state): State<Arc<AppState>>,
     Query(params): Query<AddWatchParams>,
-) -> Result<Redirect, Response> {
+) -> Result<Redirect, AppError> {
     let conn = state
         .pool
         .get()
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let Some(media) = get_media_by_id(&conn, params.id, Some(params.media_kind))
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+        .map_err(|err| AppError::Internal(err.into()))?
     else {
-        return Err(StatusCode::NOT_FOUND.into_response());
+        return Err(AppError::NotFound);
     };
 
     insert_watch_history(
@@ -45,8 +43,7 @@ pub async fn post_add_watch(
         },
     )
     .await
-    .inspect_err(|err| eprintln!("{:?}", err))
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+    .map_err(|err| AppError::Internal(err.into()))?;
 
     Ok(Redirect::to("/"))
 }

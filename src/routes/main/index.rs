@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use askama::Template;
-use askama_web::WebTemplate;
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::{extract::State, response::IntoResponse};
 
-use crate::{AppState, db::MediaKind};
+use crate::{
+    AppState,
+    db::MediaKind,
+    response::{AppError, HtmlTemplate},
+};
 
 struct RecentlyWatchedEntry {
     // watched_at: jiff::Timestamp,
@@ -18,19 +17,18 @@ struct RecentlyWatchedEntry {
     show_title: Option<String>,
 }
 
-#[derive(Template, WebTemplate)]
+#[derive(Template)]
 #[template(path = "index.html")]
 pub struct IndexTemplate {
     recently_watched: Vec<RecentlyWatchedEntry>,
 }
 
-pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTemplate, Response> {
+pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<impl IntoResponse, AppError> {
     let conn = state
         .pool
         .get()
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let rows = conn
         .query(
@@ -49,7 +47,7 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTempla
             &[],
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let recently_watched = rows
         .iter()
@@ -59,8 +57,7 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTempla
             RecentlyWatchedEntry {
                 url: match media_kind {
                     MediaKind::Movie => {
-                        let id: i32 = row.get(0);
-                        format!("/movie/{}", id)
+                        format!("/movie/{}", row.get::<_, i32>(0))
                     }
                     MediaKind::Episode => {
                         // TODO: page for specific episodes...
@@ -78,5 +75,5 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<IndexTempla
         })
         .collect();
 
-    Ok(IndexTemplate { recently_watched })
+    Ok(HtmlTemplate(IndexTemplate { recently_watched }))
 }

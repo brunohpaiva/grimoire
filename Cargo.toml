@@ -20,3 +20,6 @@ postgres-types = { version = "0.2.9", features = ["derive"] }
 jiff = { version = "0.1", features = ["serde"] }
 tokio-postgres = { version = "0.7.9", features = ["with-jiff-0_1"] }
 reqwest = { version = "0.12.16", features = ["json"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing = "0.1.41"
+tower-http = { version = "0.6.4", features = ["trace"] }

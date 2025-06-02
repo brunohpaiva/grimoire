@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use axum::{
-    Router,
-    routing::{get, post},
+    response::IntoResponse, routing::{get, post}, Router
 };
 
-use crate::AppState;
+use crate::{response::AppError, AppState};
 
 mod add_media;
 mod add_watch;
@@ -23,4 +22,9 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route("/add-watch", post(add_watch::post_add_watch))
         .route("/search", get(search::get_search))
         .route("/add-media", post(add_media::post_add_media))
+        .fallback(fallback_handler)
+}
+
+async fn fallback_handler() -> impl IntoResponse {
+    AppError::NotFound
 }

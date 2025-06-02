@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::Redirect,
 };
 use serde::Deserialize;
 
@@ -13,6 +12,7 @@ use crate::{
         Media, MediaExternalId, MediaKind, NewMovie, NewSeason, NewShow, get_media_by_tmdb_id,
         insert_movie, insert_show,
     },
+    response::AppError,
     tmdb::TmdbId,
 };
 
@@ -25,23 +25,22 @@ pub struct AddMediaParams {
 pub async fn post_add_media(
     State(state): State<Arc<AppState>>,
     Query(params): Query<AddMediaParams>,
-) -> Result<Redirect, Response> {
+) -> Result<Redirect, AppError> {
     let media_kind = match params.tmdb_type.as_str() {
         "movie" => MediaKind::Movie,
         "tv" => MediaKind::Show,
-        _ => return Err(StatusCode::BAD_REQUEST.into_response()),
+        _ => return Err(AppError::BadRequest),
     };
 
     let mut conn = state
         .pool
         .get()
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let media = get_media_by_tmdb_id(&conn, &params.tmdb_id, &media_kind)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     if let Some(media) = media {
         return Ok(redirect_to(&media));
@@ -53,8 +52,7 @@ pub async fn post_add_media(
                 .tmdb_api
                 .fetch_full_movie(&params.tmdb_id)
                 .await
-                .inspect_err(|err| eprintln!("{:?}", err))
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+                .map_err(|err| AppError::Internal(err.into()))?;
 
             insert_movie(
                 &mut conn,
@@ -77,16 +75,14 @@ pub async fn post_add_media(
                 },
             )
             .await
-            .inspect_err(|err| eprintln!("{:?}", err))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+            .map_err(|err| AppError::Internal(err.into()))?
         }
         MediaKind::Show => {
             let full_show = state
                 .tmdb_api
                 .fetch_full_show(&params.tmdb_id)
                 .await
-                .inspect_err(|err| eprintln!("{:?}", err))
-                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+                .map_err(|err| AppError::Internal(err.into()))?;
 
             let seasons = full_show
                 .seasons
@@ -127,8 +123,7 @@ pub async fn post_add_media(
                 },
             )
             .await
-            .inspect_err(|err| eprintln!("{:?}", err))
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+            .map_err(|err| AppError::Internal(err.into()))?
         }
         _ => unreachable!(),
     };

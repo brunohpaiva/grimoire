@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
 use askama::Template;
-use askama_web::WebTemplate;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
 };
 
-use crate::AppState;
+use crate::{
+    AppState,
+    response::{AppError, HtmlTemplate},
+};
 
-#[derive(Template, WebTemplate)]
+#[derive(Template)]
 #[template(path = "movie.html")]
 pub struct MovieTemplate {
     id: i32,
@@ -22,13 +23,12 @@ pub struct MovieTemplate {
 pub async fn get_movie(
     State(state): State<Arc<AppState>>,
     Path(movie_id): Path<i32>,
-) -> Result<MovieTemplate, Response> {
+) -> Result<impl IntoResponse, AppError> {
     let conn = state
         .pool
         .get()
         .await
-        .inspect_err(|err| eprintln!("{:?}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let Some(row) = conn
         .query_opt(
@@ -41,15 +41,15 @@ pub async fn get_movie(
             &[&movie_id],
         )
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?
+        .map_err(|err| AppError::Internal(err.into()))?
     else {
-        return Err(StatusCode::NOT_FOUND.into_response());
+        return Err(AppError::NotFound);
     };
 
-    Ok(MovieTemplate {
+    Ok(HtmlTemplate(MovieTemplate {
         id: row.get(0),
         title: row.get(1),
         release_year: row.get(2),
         play_count: row.get(3),
-    })
+    }))
 }

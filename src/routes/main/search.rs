@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use askama::Template;
-use askama_web::WebTemplate;
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
 };
 use serde::Deserialize;
 
-use crate::{AppState, tmdb::TmdbId};
+use crate::{
+    AppState,
+    response::{AppError, HtmlTemplate},
+    tmdb::TmdbId,
+};
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -23,7 +25,7 @@ struct SearchResultEntry {
     tmdb_type: String,
 }
 
-#[derive(Template, WebTemplate)]
+#[derive(Template)]
 #[template(path = "search_result.html")]
 pub struct SearchResultTemplate {
     title: String,
@@ -33,13 +35,12 @@ pub struct SearchResultTemplate {
 pub async fn get_search(
     State(state): State<Arc<AppState>>,
     Query(params): Query<SearchParams>,
-) -> Result<SearchResultTemplate, Response> {
+) -> Result<impl IntoResponse, AppError> {
     let search_response = state
         .tmdb_api
         .multi_search(&params.query)
         .await
-        .inspect_err(|err| println!("{}", err))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())?;
+        .map_err(|err| AppError::Internal(err.into()))?;
 
     let results = search_response
         .results
@@ -51,8 +52,8 @@ pub async fn get_search(
         })
         .collect();
 
-    Ok(SearchResultTemplate {
+    Ok(HtmlTemplate(SearchResultTemplate {
         title: params.query,
         results,
-    })
+    }))
 }
