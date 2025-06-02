@@ -17,6 +17,7 @@ mod response;
 mod routes;
 pub mod tmdb;
 pub mod trakt;
+mod filters;
 
 struct AppState {
     pub pool: Pool,

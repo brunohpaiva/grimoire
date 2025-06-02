@@ -10,15 +10,15 @@
 
     <ol>
         {% for entry in recently_watched %}
-            <li>
-                <a href="{{ entry.url }}">Title: {{ entry.title }}</a>
-                {% if let Some(text) = entry.season_title %}
-                    Season: {{ text }}
-                {% endif %}
-                {% if let Some(text) = entry.show_title %}
-                    Show: {{ text }}
-                {% endif %}
-            </li>
+        <li>
+            [{{ entry.watched_at | datetime }}]
+            {% match entry.media %}
+            {% when RecentlyWatchedEntryMedia::Movie { title } %}
+            <a href="{{ entry.url }}">{{ title }}</a>
+            {% when RecentlyWatchedEntryMedia::Episode { title, number, season_number, show_title } %}
+            <a href="{{ entry.url }}">{{ show_title }} - {{ season_number | fmt("{:0>2}") }}x{{ number | fmt("{:0>2}") }} - {{ title }}</a>
+            {% endmatch %}
+        </li>
         {% endfor %}
     </ol>
 </section>
