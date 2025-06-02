@@ -4,6 +4,20 @@
 <h1>{{ title }}</h1>
 
 <span><b>Release Year:</b> {{ release_year }}</span>
+{% if let Some(runtime) = runtime %}
+<span><b>Runtime:</b> {{ runtime }} minutes</span>
+{% endif %}
+
+<br>
+
+{% if let Some(tagline) = tagline %}
+<i>{{ tagline }}</i>
+{% endif %}
+
+{% if let Some(overview) = overview %}
+<p>{{ overview }}</p>
+{% endif %}
+
 <span><b>Play Count:</b> {{ play_count }}</span>
 
 <form method="POST" action="/add-watch?media_kind=movie&id={{ id }}">

@@ -16,11 +16,14 @@ struct Episode {
     title: String,
     number: i32,
     play_count: i64,
+    overview: Option<String>,
+    runtime: Option<i32>,
 }
 
 struct Season {
     title: String,
     number: i32,
+    overview: Option<String>,
     episodes: Vec<Episode>,
 }
 
@@ -29,6 +32,9 @@ struct Season {
 pub struct ShowTemplate {
     title: String,
     release_year: i32,
+    overview: Option<String>,
+    tagline: Option<String>,
+    episode_runtime: Option<i32>,
     seasons: Vec<Season>,
 }
 
@@ -48,7 +54,9 @@ pub async fn get_show(
             SELECT sh.title AS show_title, sh.release_year AS show_release_year, 
             se.title AS season_title, se.number AS season_number,
             ep.id AS episode_id, ep.title AS episode_title, ep.number AS episode_number,
-            COUNT(wh.watched_at) AS play_count FROM show sh
+            COUNT(wh.watched_at) AS play_count, sh.overview AS show_overview, sh.tagline AS show_tagline,
+            sh.episode_runtime AS average_runtime, se.overview AS season_overview, ep.overview AS episode_overview,
+            ep.runtime AS episode_overview FROM show sh
             LEFT JOIN season se ON se.show_id = sh.id
             LEFT JOIN episode ep ON ep.show_id = sh.id AND ep.season_id = se.id
             LEFT JOIN watch_history wh ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
@@ -68,6 +76,9 @@ pub async fn get_show(
     let mut template = ShowTemplate {
         title: String::new(),
         release_year: 0,
+        overview: None,
+        tagline: None,
+        episode_runtime: None,
         seasons: vec![],
     };
 
@@ -75,6 +86,9 @@ pub async fn get_show(
         if row_idx == 0 {
             template.title = row.get(0);
             template.release_year = row.get(1);
+            template.overview = row.get(8);
+            template.tagline = row.get(9);
+            template.episode_runtime = row.get(10);
         }
 
         let Some(season_number) = row.get::<_, Option<i32>>(3) else {
@@ -92,6 +106,7 @@ pub async fn get_show(
                 template.seasons.push(Season {
                     title: row.get(2),
                     number: season_number,
+                    overview: row.get(11),
                     episodes: vec![],
                 });
                 &mut template.seasons[idx]
@@ -107,6 +122,8 @@ pub async fn get_show(
             title: row.get(5),
             number: row.get(6),
             play_count: row.get(7),
+            overview: row.get(12),
+            runtime: row.get(13),
         });
     }
 

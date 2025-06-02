@@ -3,31 +3,54 @@
 {% block body %}
 <h1>{{ title }}</h1>
 
-<b>Release Year:</b> {{ release_year }}
+<span><b>Release Year:</b> {{ release_year }}</span>
+{% if let Some(episode_runtime) = episode_runtime %}
+<span><b>Average Runtime:</b> {{ episode_runtime }} minutes</span>
+{% endif %}
+
+<br>
+
+{% if let Some(tagline) = tagline %}
+<i>{{ tagline }}</i>
+{% endif %}
+
+{% if let Some(overview) = overview %}
+<p>{{ overview }}</p>
+{% endif %}
 
 <h2>Seasons</h2>
 
 <ol>
     {% for season in seasons %}
-        <li>
-            <span><b>Title:</b> {{ season.title }}</span>
-            
-            <p>Episodes:</p>
+    <li>
+        <span><b>Title:</b> {{ season.title }}</span>
 
-            <ol>
-                {% for episode in season.episodes %}
-                    <li>
-                        <span><b>Number:</b> {{ episode.number }}</span>
-                        <span><b>Title:</b> {{ episode.title }}</span>
-                        <span><b>Play Count:</b> {{ episode.play_count }}</span>
-                        <form method="POST" action="/add-watch?media_kind=episode&id={{ episode.id }}">
-                            <button type="submit">Add play</button>
-                        </form>
-                    </li>
-                {% endfor %}
-            </ol>
+        {% if let Some(overview) = season.overview %}
+        <p>{{ overview }}</p>
+        {% endif %}
 
-        </li>
+        <p>Episodes:</p>
+
+        <ol>
+            {% for episode in season.episodes %}
+            <li>
+                <span><b>Number:</b> {{ episode.number }}</span>
+                <span><b>Title:</b> {{ episode.title }}</span>
+                {% if let Some(runtime) = episode.runtime %}
+                <span><b>Episode Runtime:</b> {{ runtime }} minutes</span>
+                {% endif %}
+                {% if let Some(overview) = episode.overview %}
+                <p>{{ overview }}</p>
+                {% endif %}
+                <span><b>Play Count:</b> {{ episode.play_count }}</span>
+                <form method="POST" action="/add-watch?media_kind=episode&id={{ episode.id }}">
+                    <button type="submit">Add play</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ol>
+
+    </li>
     {% endfor %}
 </ol>
 

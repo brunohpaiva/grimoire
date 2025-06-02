@@ -18,6 +18,9 @@ pub struct MovieTemplate {
     title: String,
     release_year: i32,
     play_count: i64,
+    overview: Option<String>,
+    tagline: Option<String>,
+    runtime: Option<i32>,
 }
 
 pub async fn get_movie(
@@ -33,7 +36,8 @@ pub async fn get_movie(
     let Some(row) = conn
         .query_opt(
             "
-            SELECT mo.id, mo.title, mo.release_year, COUNT(wh.watched_at) AS play_count FROM movie mo
+            SELECT mo.id, mo.title, mo.release_year, COUNT(wh.watched_at) AS play_count,
+            mo.overview, mo.tagline, mo.runtime FROM movie mo
             LEFT JOIN watch_history wh ON mo.id = wh.media_id AND wh.media_kind = 'MOVIE'
             WHERE mo.id = $1
             GROUP BY mo.id
@@ -51,5 +55,8 @@ pub async fn get_movie(
         title: row.get(1),
         release_year: row.get(2),
         play_count: row.get(3),
+        overview: row.get(4),
+        tagline: row.get(5),
+        runtime: row.get(6),
     }))
 }
