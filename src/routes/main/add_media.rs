@@ -101,7 +101,7 @@ pub async fn post_add_media(
                         title: episode.name.to_owned(),
                         number: episode.episode_number,
                         overview: Some(episode.overview.to_owned()),
-                        runtime: Some(episode.runtime),
+                        runtime: episode.runtime,
                         external_ids: Some(MediaExternalId {
                             trakt_id: None,
                             trakt_slug: None,

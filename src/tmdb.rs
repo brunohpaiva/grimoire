@@ -126,7 +126,7 @@ pub struct Episode {
     pub id: TmdbId,
     pub name: String,
     pub overview: String,
-    pub runtime: i32,
+    pub runtime: Option<i32>,
 }
 
 #[derive(Deserialize, Debug)]
