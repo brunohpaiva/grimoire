@@ -440,7 +440,7 @@ pub async fn insert_episode<C: GenericClient>(
     }
 
     tx.execute(
-        "INSERT INTO episode (show_id, season_id, id, title, number, overview, runtime) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO episode (show_id, season_id, id, title, number, overview, runtime) VALUES ($1, $2, $3, $4, $5, $6, $7)",
         &[
             &show.id,
             &season.id,
