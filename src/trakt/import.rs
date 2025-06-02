@@ -137,6 +137,7 @@ pub async fn import<C: GenericClient, R: std::io::Read>(
                                     number: trakt_episode.season_number,
                                     overview: None,
                                     external_ids: None,
+                                    episodes: None,
                                 },
                             )
                             .await?
@@ -161,6 +162,8 @@ pub async fn import<C: GenericClient, R: std::io::Read>(
                             &NewEpisode {
                                 title: trakt_episode.title,
                                 number: trakt_episode.number,
+                                overview: None,
+                                runtime: None,
                                 external_ids: Some(episode_external_ids),
                             },
                         )

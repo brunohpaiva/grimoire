@@ -62,6 +62,8 @@ CREATE TABLE episode (
     kind media_kind NOT NULL GENERATED ALWAYS AS ('EPISODE'::media_kind) STORED,
     title TEXT NOT NULL,
     number INT NOT NULL,
+    overview TEXT,
+    runtime INT,
     FOREIGN KEY (show_id) REFERENCES show (id),
     FOREIGN KEY (season_id) REFERENCES season (id),
     FOREIGN KEY (id, kind) REFERENCES media (id, kind),

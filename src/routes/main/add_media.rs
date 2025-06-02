@@ -5,12 +5,13 @@ use axum::{
     response::Redirect,
 };
 use serde::Deserialize;
+use tracing::error;
 
 use crate::{
     AppState,
     db::{
-        Media, MediaExternalId, MediaKind, NewMovie, NewSeason, NewShow, get_media_by_tmdb_id,
-        insert_movie, insert_show,
+        Media, MediaExternalId, MediaKind, NewEpisode, NewMovie, NewSeason, NewShow,
+        get_media_by_tmdb_id, insert_movie, insert_show,
     },
     response::AppError,
     tmdb::TmdbId,
@@ -84,10 +85,34 @@ pub async fn post_add_media(
                 .await
                 .map_err(|err| AppError::Internal(err.into()))?;
 
-            let seasons = full_show
-                .seasons
-                .iter()
-                .map(|season| NewSeason {
+            let mut seasons: Vec<NewSeason> = vec![];
+
+            for season in full_show.seasons.iter() {
+                // FIXME: this should get rate limited by TMDB with 50+ seasons.
+                let episodes = state
+                    .tmdb_api
+                    .fetch_full_season(&full_show.id, season.season_number)
+                    .await
+                    .inspect_err(|err| error!("{:?}", err))
+                    .map_err(|err| AppError::Internal(err.into()))?
+                    .episodes
+                    .iter()
+                    .map(|episode| NewEpisode {
+                        title: episode.name.to_owned(),
+                        number: episode.episode_number,
+                        overview: Some(episode.overview.to_owned()),
+                        runtime: Some(episode.runtime),
+                        external_ids: Some(MediaExternalId {
+                            trakt_id: None,
+                            trakt_slug: None,
+                            tvdb_id: None,
+                            imdb_id: None,
+                            tmdb_id: Some(episode.id.0),
+                        }),
+                    })
+                    .collect();
+
+                seasons.push(NewSeason {
                     title: season.name.clone(),
                     number: season.season_number,
                     overview: Some(season.overview.clone()),
@@ -98,8 +123,9 @@ pub async fn post_add_media(
                         imdb_id: None,
                         tmdb_id: Some(season.id.0),
                     }),
-                })
-                .collect();
+                    episodes: Some(episodes),
+                });
+            }
 
             insert_show(
                 &mut conn,

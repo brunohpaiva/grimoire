@@ -119,6 +119,25 @@ pub struct FullShow {
     pub images: Option<Images>,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct Episode {
+    pub episode_number: i32,
+    pub season_number: i32,
+    pub id: TmdbId,
+    pub name: String,
+    pub overview: String,
+    pub runtime: i32,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct FullSeason {
+    pub id: TmdbId,
+    pub season_number: i32,
+    pub name: String,
+    pub overview: String,
+    pub episodes: Vec<Episode>,
+}
+
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -201,6 +220,24 @@ impl TmdbApi {
         Self::json_request(
             self.client
                 .get(format!("{}/tv/{}", Self::BASE_URL, show_id.0))
+                .bearer_auth(self.api_key.to_string()),
+        )
+        .await
+    }
+
+    pub async fn fetch_full_season(
+        &self,
+        show_id: &TmdbId,
+        season_number: i32,
+    ) -> Result<FullSeason, ApiError> {
+        Self::json_request(
+            self.client
+                .get(format!(
+                    "{}/tv/{}/season/{}",
+                    Self::BASE_URL,
+                    show_id.0,
+                    season_number
+                ))
                 .bearer_auth(self.api_key.to_string()),
         )
         .await

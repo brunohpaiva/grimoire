@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use axum::{
-    response::IntoResponse, routing::{get, post}, Router
+    Router,
+    response::IntoResponse,
+    routing::{get, post},
 };
 
-use crate::{response::AppError, AppState};
+use crate::{AppState, response::AppError};
 
 mod add_media;
 mod add_watch;

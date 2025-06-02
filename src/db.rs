@@ -332,6 +332,8 @@ pub enum InsertSeasonError {
     InsertMediaExternalId(#[source] InsertMediaExternalIdError),
     #[error("failed to insert season")]
     InsertSeason(#[source] tokio_postgres::Error),
+    #[error("failed to insert episode")]
+    InsertEpisode(#[source] InsertEpisodeError),
     #[error("failed to start transaction")]
     StartTransaction(#[source] tokio_postgres::Error),
     #[error("failed to commit transaction")]
@@ -343,6 +345,7 @@ pub struct NewSeason {
     pub number: i32,
     pub overview: Option<String>,
     pub external_ids: Option<MediaExternalId>,
+    pub episodes: Option<Vec<NewEpisode>>,
 }
 
 pub async fn insert_season<C: GenericClient>(
@@ -350,7 +353,7 @@ pub async fn insert_season<C: GenericClient>(
     show: &Media,
     new_season: &NewSeason,
 ) -> Result<Media, InsertSeasonError> {
-    let tx = conn
+    let mut tx = conn
         .transaction()
         .await
         .map_err(InsertSeasonError::StartTransaction)?;
@@ -378,6 +381,14 @@ pub async fn insert_season<C: GenericClient>(
     .await
     .map_err(InsertSeasonError::InsertSeason)?;
 
+    if let Some(episodes) = &new_season.episodes {
+        for episode in episodes {
+            insert_episode(&mut tx, &show, &media, episode)
+                .await
+                .map_err(InsertSeasonError::InsertEpisode)?;
+        }
+    }
+
     tx.commit()
         .await
         .map_err(InsertSeasonError::CommitTransaction)?;
@@ -402,6 +413,8 @@ pub enum InsertEpisodeError {
 pub struct NewEpisode {
     pub title: String,
     pub number: i32,
+    pub overview: Option<String>,
+    pub runtime: Option<i32>,
     pub external_ids: Option<MediaExternalId>,
 }
 
@@ -427,13 +440,15 @@ pub async fn insert_episode<C: GenericClient>(
     }
 
     tx.execute(
-        "INSERT INTO episode (show_id, season_id, id, title, number) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO episode (show_id, season_id, id, title, number, overview, runtime) VALUES ($1, $2, $3, $4, $5)",
         &[
             &show.id,
             &season.id,
             &media.id,
             &new_episode.title,
             &new_episode.number,
+            &new_episode.overview,
+            &new_episode.runtime,
         ],
     )
     .await
