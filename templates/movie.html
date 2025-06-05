@@ -24,4 +24,21 @@
     <button type="submit">Add play</button>
 </form>
 
+<section>
+    <h3>History</h3>
+
+    <ol>
+        {% for entry in history %}
+        <li>
+            [{{ entry.watched_at | datetime }}]
+            {% match entry.media %}
+            {% when WatchHistoryEntryMedia::Movie { title, .. } %}
+            {{ title }}
+            {% when _ %}
+            {% endmatch %}
+        </li>
+        {% endfor %}
+    </ol>
+</section>
+
 {% endblock %}

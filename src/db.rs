@@ -487,3 +487,108 @@ pub async fn insert_watch_history<C: GenericClient>(
 
     Ok(())
 }
+
+#[derive(Debug, Error)]
+#[error("failed to get watch history")]
+pub struct GetWatchHistoryError(#[source] tokio_postgres::Error);
+
+#[derive(Clone)]
+pub enum WatchHistoryEntryMedia {
+    Movie {
+        id: i32,
+        title: String,
+    },
+    Episode {
+        episode_id: i32,
+        episode_title: String,
+        episode_number: i32,
+        season_number: i32,
+        show_id: i32,
+        show_title: String,
+    },
+}
+
+pub struct WatchHistoryEntry {
+    pub watched_at: jiff::Timestamp,
+    pub media: WatchHistoryEntryMedia,
+}
+
+pub enum GetWatchHistoryFilter {
+    Movie(i32),
+    Episode(i32),
+    Show(i32),
+}
+
+pub async fn get_watch_history<C: GenericClient>(
+    conn: &C,
+    limit: i64,
+    filter_opt: Option<GetWatchHistoryFilter>,
+) -> Result<Vec<WatchHistoryEntry>, GetWatchHistoryError> {
+    let mut query = "
+        SELECT wh.watched_at, wh.media_kind, wh.media_id,
+        COALESCE(ep.title, mo.title) AS title,
+        ep.number AS episode_number, se.number AS season_number,
+        sh.id AS show_id, sh.title AS show_title FROM watch_history wh
+        LEFT JOIN movie mo ON wh.media_id = mo.id AND wh.media_kind = 'MOVIE'
+        LEFT JOIN episode ep ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
+        LEFT JOIN season se ON ep.season_id = se.id AND ep.show_id = se.show_id
+        LEFT JOIN show sh ON ep.show_id = sh.id
+        WHERE 1 > 0"
+        .to_string();
+    let mut args: Vec<Box<dyn ToSql + Sync + Send>> = vec![Box::new(limit)];
+
+    let mut where_stmt = String::new();
+    if let Some(filter) = filter_opt {
+        let (stmt, id) = match filter {
+            GetWatchHistoryFilter::Movie(id) => (" AND mo.id = $2", id),
+            GetWatchHistoryFilter::Episode(id) => (" AND ep.id = $2", id),
+            GetWatchHistoryFilter::Show(id) => (" AND sh.id = $2", id),
+        };
+        where_stmt += stmt;
+        args.push(Box::new(id));
+    }
+
+    query += &where_stmt;
+    query += " ORDER BY wh.watched_at DESC LIMIT $1";
+
+    // ugly.
+    let args: Vec<&(dyn ToSql + Sync)> = args
+        .iter()
+        .map(|x| x.as_ref() as &(dyn ToSql + Sync))
+        .collect();
+
+    let rows = conn
+        .query(&query, &args)
+        .await
+        .map_err(GetWatchHistoryError)?;
+
+    let history = rows
+        .iter()
+        .map(|row| {
+            let media_kind: MediaKind = row.get(1);
+
+            let media = match media_kind {
+                MediaKind::Movie => WatchHistoryEntryMedia::Movie {
+                    id: row.get(2),
+                    title: row.get(3),
+                },
+                MediaKind::Episode => WatchHistoryEntryMedia::Episode {
+                    episode_id: row.get(2),
+                    episode_title: row.get(3),
+                    episode_number: row.get(4),
+                    season_number: row.get(5),
+                    show_id: row.get(6),
+                    show_title: row.get(7),
+                },
+                _ => unreachable!("invalid media_kind in watch_history table"),
+            };
+
+            WatchHistoryEntry {
+                watched_at: row.get(0),
+                media,
+            }
+        })
+        .collect();
+
+    Ok(history)
+}

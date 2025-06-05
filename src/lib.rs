@@ -13,11 +13,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod config;
 mod db;
+mod filters;
 mod response;
 mod routes;
 pub mod tmdb;
 pub mod trakt;
-mod filters;
 
 struct AppState {
     pub pool: Pool,

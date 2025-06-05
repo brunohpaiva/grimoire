@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::filters;
 use askama::Template;
 use axum::{
     extract::{Path, State},
@@ -8,6 +9,7 @@ use axum::{
 
 use crate::{
     AppState,
+    db::{WatchHistoryEntry, WatchHistoryEntryMedia, get_watch_history},
     response::{AppError, HtmlTemplate},
 };
 
@@ -21,6 +23,7 @@ pub struct MovieTemplate {
     overview: Option<String>,
     tagline: Option<String>,
     runtime: Option<i32>,
+    history: Vec<WatchHistoryEntry>,
 }
 
 pub async fn get_movie(
@@ -50,6 +53,15 @@ pub async fn get_movie(
         return Err(AppError::NotFound);
     };
 
+    // TODO: implement pagination...
+    let movie_history = get_watch_history(
+        &conn,
+        999,
+        Some(crate::db::GetWatchHistoryFilter::Movie(movie_id)),
+    )
+    .await
+    .map_err(|err| AppError::Internal(err.into()))?;
+
     Ok(HtmlTemplate(MovieTemplate {
         id: row.get(0),
         title: row.get(1),
@@ -58,5 +70,6 @@ pub async fn get_movie(
         overview: row.get(4),
         tagline: row.get(5),
         runtime: row.get(6),
+        history: movie_history,
     }))
 }

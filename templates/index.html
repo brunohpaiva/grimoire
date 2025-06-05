@@ -13,10 +13,10 @@
         <li>
             [{{ entry.watched_at | datetime }}]
             {% match entry.media %}
-            {% when RecentlyWatchedEntryMedia::Movie { title } %}
+            {% when WatchHistoryEntryMedia::Movie { title, .. } %}
             <a href="{{ entry.url }}">{{ title }}</a>
-            {% when RecentlyWatchedEntryMedia::Episode { title, number, season_number, show_title } %}
-            <a href="{{ entry.url }}">{{ show_title }} - {{ season_number | fmt("{:0>2}") }}x{{ number | fmt("{:0>2}") }} - {{ title }}</a>
+            {% when WatchHistoryEntryMedia::Episode { episode_title, episode_number, season_number, show_title, .. } %}
+            <a href="{{ entry.url }}">{{ show_title }} - {{ season_number | fmt("{:0>2}") }}x{{ episode_number | fmt("{:0>2}") }} - {{ episode_title }}</a>
             {% endmatch %}
         </li>
         {% endfor %}
