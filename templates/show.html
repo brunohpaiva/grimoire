@@ -18,12 +18,17 @@
 <p>{{ overview }}</p>
 {% endif %}
 
+{{ total_episodes_watched }}/{{ total_episodes_count }} episodes watched - 
+{{ total_play_count }} plays
+
 <h2>Seasons</h2>
 
 <ol>
     {% for season in seasons %}
     <li>
-        <a href="/show/{{ id }}/season/{{ season.number }}">{{ season.title }}</a>
+        <a href="/show/{{ id }}/season/{{ season.number }}">{{ season.title }}</a> - 
+        {{ season.episodes_watched }}/{{ season.episodes_count }} episodes watched - 
+        {{ season.play_count }} plays
     </li>
     {% endfor %}
 </ol>

@@ -27,6 +27,9 @@ pub struct ShowSeasonTemplate {
     show_id: i32,
     show_title: String,
     overview: Option<String>,
+    total_episodes_count: i64,
+    total_episodes_watched: i64,
+    total_play_count: i64,
     episodes: Vec<Episode>,
 }
 
@@ -73,6 +76,9 @@ pub async fn get_show_season(
         show_id: params.show_id,
         show_title: String::new(),
         overview: None,
+        total_episodes_count: 0,
+        total_episodes_watched: 0,
+        total_play_count: 0,
         episodes: Vec::new(),
     };
 
@@ -83,12 +89,21 @@ pub async fn get_show_season(
             template.show_title = row.get(3);
         }
 
+        let play_count: i64 = row.get(8);
+
+        template.total_episodes_count += 1;
+        template.total_play_count += play_count;
+
+        if play_count > 0 {
+            template.total_episodes_watched += 1;
+        }
+
         template.episodes.push(Episode {
             id: row.get(4),
             title: row.get(5),
             number: row.get(6),
             overview: row.get(7),
-            play_count: row.get(8),
+            play_count,
         });
     }
 

@@ -14,6 +14,9 @@ use crate::{
 struct Season {
     title: String,
     number: i32,
+    episodes_count: i64,
+    episodes_watched: i64,
+    play_count: i64,
 }
 
 #[derive(Template)]
@@ -25,6 +28,9 @@ pub struct ShowTemplate {
     overview: Option<String>,
     tagline: Option<String>,
     episode_runtime: Option<i32>,
+    total_episodes_count: i64,
+    total_episodes_watched: i64,
+    total_play_count: i64,
     seasons: Vec<Season>,
 }
 
@@ -44,7 +50,9 @@ pub async fn get_show(
             SELECT sh.id AS show_id, sh.title AS show_title, sh.release_year, 
             sh.overview AS show_overview, sh.tagline AS show_tagline,
             sh.episode_runtime, se.id AS season_id, se.title AS season_title, 
-            se.number AS season_number, COUNT(wh.watched_at) AS play_count FROM show sh
+            se.number AS season_number, COUNT(DISTINCT(ep.id)) AS episodes_count, 
+            COUNT(DISTINCT(wh.media_id)) AS episodes_watched, COUNT(wh.watched_at) AS play_count 
+            FROM show sh
             LEFT JOIN season se ON se.show_id = sh.id
             LEFT JOIN episode ep ON ep.season_id = se.id
             LEFT JOIN watch_history wh ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
@@ -68,6 +76,9 @@ pub async fn get_show(
         overview: None,
         tagline: None,
         episode_runtime: None,
+        total_episodes_count: 0,
+        total_episodes_watched: 0,
+        total_play_count: 0,
         seasons: vec![],
     };
 
@@ -85,10 +96,20 @@ pub async fn get_show(
             continue;
         };
 
-        // TODO: add play count to season
+        let episodes_count: i64 = row.get(9);
+        let episodes_watched: i64 = row.get(10);
+        let play_count: i64 = row.get(11);
+
+        template.total_episodes_count += episodes_count;
+        template.total_episodes_watched += episodes_watched;
+        template.total_play_count += play_count;
+
         template.seasons.push(Season {
             title: row.get(7),
             number: season_number,
+            episodes_count,
+            episodes_watched,
+            play_count,
         });
     }
 
