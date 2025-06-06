@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block body %}
+<h2>
+    <a href="/show/{{ show_id }}">{{ show_title }}</a> - 
+    <a href="/show/{{ show_id }}/season/{{ season_number }}">{{ season_title }}</a>
+</h2>
+<h1>{{ season_number | fmt("{:0>2}") }}x{{ episode_number | fmt("{:0>2}") }} - {{ title }}</h1>
+
+{% if let Some(overview) = overview %}
+<p>{{ overview }}</p>
+{% endif %}
+
+{{ play_count }} plays
+
+<form method="POST" action="/add-watch?media_kind=episode&id={{ episode_id }}">
+    <button type="submit">Add play</button>
+</form>
+{% endblock %}

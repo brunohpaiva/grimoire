@@ -14,6 +14,7 @@ mod index;
 mod movie;
 mod search;
 mod show;
+mod show_episode;
 mod show_season;
 
 pub fn build_router() -> Router<Arc<AppState>> {
@@ -25,6 +26,10 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route(
             "/show/{show_id}/season/{season_number}",
             get(show_season::get_show_season),
+        )
+        .route(
+            "/show/{show_id}/season/{season_number}/episode/{episode_number}",
+            get(show_episode::get_show_episode),
         )
         .route("/add-watch", post(add_watch::post_add_watch))
         .route("/search", get(search::get_search))

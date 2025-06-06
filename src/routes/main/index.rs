@@ -39,7 +39,15 @@ pub async fn get_index(State(state): State<Arc<AppState>>) -> Result<impl IntoRe
             media: entry.media.to_owned(),
             url: match entry.media {
                 WatchHistoryEntryMedia::Movie { id, .. } => format!("/movie/{}", id),
-                WatchHistoryEntryMedia::Episode { show_id, .. } => format!("/show/{}", show_id),
+                WatchHistoryEntryMedia::Episode {
+                    show_id,
+                    season_number,
+                    episode_number,
+                    ..
+                } => format!(
+                    "/show/{}/season/{}/episode/{}",
+                    show_id, season_number, episode_number
+                ),
             },
         })
         .collect();

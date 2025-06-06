@@ -24,6 +24,7 @@ struct Episode {
 #[template(path = "show_season.html")]
 pub struct ShowSeasonTemplate {
     title: String,
+    season_number: i32,
     show_id: i32,
     show_title: String,
     overview: Option<String>,
@@ -54,7 +55,8 @@ pub async fn get_show_season(
             "
             SELECT se.id AS season_id, se.title AS season_title, se.overview, sh.title AS show_title,
             ep.id AS episode_id, ep.title AS episode_title, ep.number AS episode_number, 
-            ep.overview AS episode_overview, COUNT(wh.watched_at) AS play_count FROM season se
+            ep.overview AS episode_overview, COUNT(wh.watched_at) AS play_count,
+            se.number AS season_number FROM season se
             INNER JOIN show sh ON sh.id = se.show_id
             INNER JOIN episode ep ON ep.season_id = se.id
             LEFT JOIN watch_history wh ON wh.media_id = ep.id AND wh.media_kind = 'EPISODE'
@@ -73,6 +75,7 @@ pub async fn get_show_season(
 
     let mut template = ShowSeasonTemplate {
         title: String::new(),
+        season_number: 0,
         show_id: params.show_id,
         show_title: String::new(),
         overview: None,
@@ -87,6 +90,7 @@ pub async fn get_show_season(
             template.title = row.get(1);
             template.overview = row.get(2);
             template.show_title = row.get(3);
+            template.season_number = row.get(9);
         }
 
         let play_count: i64 = row.get(8);

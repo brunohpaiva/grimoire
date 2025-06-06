@@ -16,7 +16,7 @@
 <ol>
     {% for episode in episodes %}
     <li>
-        <span><b>Title:</b> {{ episode.title }}</span>
+        <b>Title:</b> <a href="/show/{{ show_id }}/season/{{ season_number }}/episode/{{ episode.number }}">{{ episode.title }}</a>
 
         {% if let Some(overview) = episode.overview %}
         <p>{{ overview }}</p>
