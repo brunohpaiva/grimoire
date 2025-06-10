@@ -4,12 +4,23 @@
 <h1>Search results</h1>
 
 <ol>
-    {% for result in results %}
+    {% for entry in results %}
         <li>
-            <span><b>Title:</b> {{ result.title }}</span>
-            <form method="POST" action="/add-media?tmdb_type={{ result.tmdb_type }}&tmdb_id={{ result.tmdb_id }}">
+            {% match entry.media %}
+            {% when SearchResultMedia::Movie { title, .. } %}
+            <span>[MOVIE] <b>Title:</b> {{ title }}</span>
+            <form method="POST" action="/add-media?tmdb_type=movie&tmdb_id={{ entry.id }}">
                 <button type="submit">Go to media</button>
             </form>
+            {% when SearchResultMedia::Show { title, .. } %}
+            <span>[TV SHOW] <b>Title:</b> {{ title }}</span>
+            <form method="POST" action="/add-media?tmdb_type=tv&tmdb_id={{ entry.id }}">
+                <button type="submit">Go to media</button>
+            </form>
+            {% when SearchResultMedia::Person { name, .. } %}
+            <span>[PERSON] <b>Name:</b> {{ name }}</span>
+            {# TODO: go to person profile page #}
+            {% endmatch %}
         </li>
     {% endfor %}
 </ol>

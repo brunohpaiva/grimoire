@@ -1,4 +1,4 @@
-use jiff::{tz::TimeZone, Timestamp};
+use jiff::{Timestamp, tz::TimeZone};
 
 pub fn datetime(s: &Timestamp, _: &dyn askama::Values) -> askama::Result<String> {
     let tz = TimeZone::system();

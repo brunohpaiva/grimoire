@@ -58,18 +58,39 @@ pub struct ListResponse<T> {
 }
 
 #[derive(Deserialize, Debug)]
+#[serde(tag = "media_type")]
+pub enum SearchResultMedia {
+    #[serde(rename = "movie")]
+    Movie {
+        title: String,
+        original_title: String,
+        overview: String,
+        #[serde(deserialize_with = "empty_string_as_none")]
+        release_date: Option<Date>,
+        original_language: String,
+        poster_path: Option<String>,
+    },
+    #[serde(rename = "tv")]
+    Show {
+        #[serde(rename = "name")]
+        title: String,
+        #[serde(rename = "original_name")]
+        original_title: String,
+        overview: String,
+        #[serde(deserialize_with = "empty_string_as_none", rename = "first_air_date")]
+        release_date: Option<Date>,
+        original_language: String,
+        poster_path: Option<String>,
+    },
+    #[serde(rename = "person")]
+    Person { name: String, original_name: String },
+}
+
+#[derive(Deserialize, Debug)]
 pub struct SearchResultEntry {
     pub id: TmdbId,
-    #[serde(alias = "name")]
-    pub title: String,
-    #[serde(alias = "original_name")]
-    pub original_title: String,
-    pub overview: String,
-    pub poster_path: Option<String>,
-    pub media_type: String,
-    pub original_language: String,
-    #[serde(deserialize_with = "empty_string_as_none", alias = "first_air_date")]
-    pub release_date: Option<Date>,
+    #[serde(flatten)]
+    pub media: SearchResultMedia,
 }
 
 #[derive(Deserialize, Debug)]
