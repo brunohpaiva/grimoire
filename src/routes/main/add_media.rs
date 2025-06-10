@@ -61,8 +61,7 @@ pub async fn post_add_media(
                     title: full_movie.original_title,
                     release_year: full_movie
                         .release_date
-                        .map(|date| date.year() as i32)
-                        .unwrap_or_else(|| 0),
+                        .map(|date| date.year() as i32),
                     overview: Some(full_movie.overview),
                     tagline: Some(full_movie.tagline),
                     runtime: Some(full_movie.runtime),
@@ -133,8 +132,7 @@ pub async fn post_add_media(
                     title: full_show.title,
                     release_year: full_show
                         .release_date
-                        .map(|date| date.year() as i32)
-                        .unwrap_or_else(|| 0),
+                        .map(|date| date.year() as i32),
                     overview: Some(full_show.overview),
                     tagline: Some(full_show.tagline),
                     episode_runtime: full_show.episode_runtimes.get(0).copied(),

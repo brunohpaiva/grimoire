@@ -20,7 +20,7 @@ struct ExternalIds {
 #[derive(Debug, Deserialize)]
 struct Movie {
     title: String,
-    year: i32,
+    year: Option<i32>,
     ids: ExternalIds,
 }
 
@@ -36,7 +36,7 @@ struct Episode {
 #[derive(Debug, Deserialize)]
 struct Show {
     title: String,
-    year: i32,
+    year: Option<i32>,
     ids: ExternalIds,
 }
 

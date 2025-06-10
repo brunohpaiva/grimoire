@@ -188,7 +188,7 @@ pub enum InsertMovieError {
 
 pub struct NewMovie {
     pub title: String,
-    pub release_year: i32,
+    pub release_year: Option<i32>,
     pub overview: Option<String>,
     pub tagline: Option<String>,
     pub runtime: Option<i32>,
@@ -256,7 +256,7 @@ pub enum InsertShowError {
 
 pub struct NewShow {
     pub title: String,
-    pub release_year: i32,
+    pub release_year: Option<i32>,
     pub overview: Option<String>,
     pub tagline: Option<String>,
     pub episode_runtime: Option<i32>,
