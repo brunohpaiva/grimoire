@@ -79,3 +79,33 @@ CREATE TABLE watch_history (
     CONSTRAINT valid_media_kind 
         CHECK (media_kind IN ('MOVIE'::media_kind, 'EPISODE'::media_kind))
 );
+
+CREATE TYPE list_kind AS ENUM (
+    'WATCHLIST',
+    'FAVORITES',
+    'PERSONAL'
+);
+
+CREATE TABLE list (
+    id INT NOT NULL PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    kind list_kind NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- TODO: Insert this from the app?
+INSERT INTO list (name, kind) VALUES
+    ('Watchlist', 'WATCHLIST'::list_kind),
+    ('Favorites', 'FAVORITES'::list_kind);
+
+CREATE TABLE list_item (
+    list_id INT NOT NULL,
+    media_id INT NOT NULL,
+    media_kind media_kind NOT NULL,
+    listed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (list_id, media_id),
+    FOREIGN KEY (list_id) REFERENCES list (id),
+    FOREIGN KEY (media_id, media_kind) REFERENCES media (id, kind)
+);

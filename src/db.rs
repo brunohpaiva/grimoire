@@ -592,3 +592,23 @@ pub async fn get_watch_history<C: GenericClient>(
 
     Ok(history)
 }
+
+#[derive(Debug, Error)]
+#[error("failed to insert list item")]
+pub struct InsertListItemError(#[source] tokio_postgres::Error);
+
+pub async fn insert_list_item<C: GenericClient>(
+    conn: &mut C,
+    list_id: &i32,
+    media: &Media,
+    listed_at: Option<&jiff::Timestamp>,
+) -> Result<(), InsertListItemError> {
+    conn.execute(
+        "INSERT INTO list_item (list_id, media_id, media_kind, listed_at) VALUES ($1, $2, $3, $4)",
+        &[&list_id, &media.id, &media.kind, &listed_at],
+    )
+    .await
+    .map_err(InsertListItemError)?;
+
+    Ok(())
+}
