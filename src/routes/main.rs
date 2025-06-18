@@ -16,6 +16,7 @@ mod search;
 mod show;
 mod show_episode;
 mod show_season;
+mod list;
 
 pub fn build_router() -> Router<Arc<AppState>> {
     Router::new()
@@ -34,6 +35,7 @@ pub fn build_router() -> Router<Arc<AppState>> {
         .route("/add-watch", post(add_watch::post_add_watch))
         .route("/search", get(search::get_search))
         .route("/add-media", post(add_media::post_add_media))
+        .route("/list/{list_id}", get(list::get_list))
         .fallback(fallback_handler)
 }
 
